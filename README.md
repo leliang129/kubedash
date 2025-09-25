@@ -126,17 +126,26 @@ func main() {
 - [x] 扩展命名空间管理模块（Mock）
 - [x] 接入节点管理数据面板（Mock）
 - [x] 扩展 Pod 管理模块（Mock）
+- [x] 完成部署管理模块（Mock）
 ### 当前迭代说明
-- 目标：完成「集群概览 + 命名空间 + 节点管理 + Pod 管理」核心体验，保持 Mock API 与 UI 同步演进
-- 交互：前端定时轮询（15s）刷新概览信息，支持错误提示与手动刷新；命名空间支持创建/删除反馈；节点列表支持点击查看详情；Pod 页面提供日志与事件预览
-- 布局：侧边导航 + 顶部工具栏 + 内容卡片区 + 节点/Pod 详情面板，统一玻璃拟态主题
+- 目标：完成「集群概览 + 命名空间 + 节点管理 + Deployment + Pod 管理」核心体验，保持 Mock API 与 UI 同步演进
+- 交互：前端定时轮询（15s）刷新概览信息，支持错误提示与手动刷新；命名空间支持创建/删除反馈；节点列表支持点击查看详情；Deployment 支持模拟扩缩容；Pod 页面提供日志与事件预览
+- 布局：侧边导航 + 顶部工具栏 + 内容卡片区 + 节点/Deployment/Pod 详情面板，统一玻璃拟态主题
 - 技术要点：Go `net/http` + 原生前端静态页面，单体二进制即可直接运行
-- 数据面：命名空间 Mock 使用内存存储，提供 `GET/POST/DELETE /api/namespaces`；节点 Mock 提供 `GET /api/nodes`、`GET /api/nodes/:name`；Pod Mock 提供 `GET /api/pods`、`GET /api/pods/:name`
+- 数据面：命名空间 Mock 使用内存存储，提供 `GET/POST/DELETE /api/namespaces`；节点 Mock 提供 `GET /api/nodes`、`GET /api/nodes/:name`；Deployment Mock 提供 `GET /api/deployments`、`GET /api/deployments/:name`、`PUT /api/deployments/:name/scale`；Pod Mock 提供 `GET /api/pods`、`GET /api/pods/:name`
+
+### 进度速览
+- ✅ 集群概览卡片与事件流已完成，Mock 数据 15s 轮询刷新
+- ✅ 命名空间支持列表、创建、删除，错误信息中文提示
+- ✅ 节点面板覆盖列表、详情、资源指标与条件展示
+- ✅ Deployment 列表与详情可用，提供模拟扩缩容操作反馈
+- ✅ Pod 列表支持日志和事件预览，涵盖调度状态
 
 ### 快速开始
 1. `go run ./cmd/dashboard` 启动本地服务，默认监听 `:8080`
 2. 打开浏览器访问 `http://localhost:8080` 查看集群概览界面
 3. 在左侧切换至「命名空间」模块体验创建/删除操作（纯 Mock，不持久化）
 4. 在「节点管理」模块查看节点列表并点击查看详情面板
-5. 切换到「Pod 管理」模块，体验日志与事件展示（纯 Mock）
-6. 运行 `go test ./...` 校验 Mock 数据与接口逻辑
+5. 在「部署与发布」模块体验 Deployment 列表、详情与模拟扩缩容
+6. 切换到「Pod 管理」模块，体验日志与事件展示（纯 Mock）
+7. 运行 `go test ./...` 校验 Mock 数据与接口逻辑

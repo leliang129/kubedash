@@ -236,3 +236,79 @@ func TestHandlePodsEndpoints(t *testing.T) {
 		t.Fatalf("expected 404, got %d", notFoundRR.Code)
 	}
 }
+
+func TestHandleDeploymentsEndpoints(t *testing.T) {
+	fixedTime := time.Date(2024, 7, 12, 15, 30, 0, 0, time.UTC)
+	srv := NewWithClock(func() time.Time {
+		return fixedTime
+	})
+
+	listReq := httptest.NewRequest(http.MethodGet, "/api/deployments", nil)
+	listRR := httptest.NewRecorder()
+	srv.ServeHTTP(listRR, listReq)
+
+	if listRR.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", listRR.Code)
+	}
+
+	var deployments []map[string]any
+	if err := json.NewDecoder(listRR.Body).Decode(&deployments); err != nil {
+		t.Fatalf("decode deployments list: %v", err)
+	}
+
+	if len(deployments) == 0 {
+		t.Fatalf("expected deployments in list")
+	}
+
+	detailReq := httptest.NewRequest(http.MethodGet, "/api/deployments/frontend", nil)
+	detailRR := httptest.NewRecorder()
+	srv.ServeHTTP(detailRR, detailReq)
+
+	if detailRR.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", detailRR.Code)
+	}
+
+	var detail map[string]any
+	if err := json.NewDecoder(detailRR.Body).Decode(&detail); err != nil {
+		t.Fatalf("decode deployment detail: %v", err)
+	}
+
+	if detail["name"] != "frontend" {
+		t.Fatalf("unexpected deployment name %v", detail["name"])
+	}
+
+	scaleBody := map[string]any{"replicas": 6}
+	payload, _ := json.Marshal(scaleBody)
+	scaleReq := httptest.NewRequest(http.MethodPut, "/api/deployments/frontend/scale", bytes.NewReader(payload))
+	scaleRR := httptest.NewRecorder()
+	srv.ServeHTTP(scaleRR, scaleReq)
+
+	if scaleRR.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", scaleRR.Code)
+	}
+
+	var scaled map[string]any
+	if err := json.NewDecoder(scaleRR.Body).Decode(&scaled); err != nil {
+		t.Fatalf("decode scaled detail: %v", err)
+	}
+
+	if scaled["desiredReplicas"].(float64) != 6 {
+		t.Fatalf("expected desired replicas 6, got %v", scaled["desiredReplicas"])
+	}
+
+	invalidReq := httptest.NewRequest(http.MethodPut, "/api/deployments/frontend/scale", bytes.NewReader([]byte(`{"replicas":-1}`)))
+	invalidRR := httptest.NewRecorder()
+	srv.ServeHTTP(invalidRR, invalidReq)
+
+	if invalidRR.Code != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d", invalidRR.Code)
+	}
+
+	notFoundReq := httptest.NewRequest(http.MethodGet, "/api/deployments/missing", nil)
+	notFoundRR := httptest.NewRecorder()
+	srv.ServeHTTP(notFoundRR, notFoundReq)
+
+	if notFoundRR.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d", notFoundRR.Code)
+	}
+}

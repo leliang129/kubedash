@@ -338,6 +338,8 @@
       .namespace-card,
       .node-card,
       .node-detail,
+      .deploy-card,
+      .deploy-detail,
       .pod-card,
       .pod-detail {
         display: flex;
@@ -362,6 +364,32 @@
       }
 
       .namespace-form button {
+        padding: 10px 18px;
+        border-radius: 12px;
+        border: none;
+        background: linear-gradient(90deg, var(--accent) 0%, var(--accent-strong) 100%);
+        color: #fff;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      .deploy-form {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+      }
+
+      .deploy-form input {
+        width: 120px;
+        padding: 10px 14px;
+        border-radius: 12px;
+        border: 1px solid rgba(148, 163, 184, 0.35);
+        background: rgba(15, 23, 42, 0.35);
+        color: var(--text-primary);
+      }
+
+      .deploy-form button {
         padding: 10px 18px;
         border-radius: 12px;
         border: none;
@@ -419,6 +447,12 @@
         gap: 24px;
       }
 
+      .deploys-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 24px;
+      }
+
       .node-table tbody tr {
         cursor: pointer;
         transition: background 0.2s ease;
@@ -432,6 +466,15 @@
         display: grid;
         grid-template-columns: 2fr 1fr;
         gap: 24px;
+      }
+
+      .deploy-table tbody tr {
+        cursor: pointer;
+        transition: background 0.2s ease;
+      }
+
+      .deploy-table tbody tr.active {
+        background: rgba(56, 189, 248, 0.18);
       }
 
       .pod-table tbody tr {
@@ -469,6 +512,7 @@
       }
 
       .node-detail h3,
+      .deploy-detail h3,
       .pod-detail h3 {
         margin: 0;
         font-size: 20px;
@@ -541,6 +585,7 @@
 
       @media (max-width: 1200px) {
         .nodes-grid,
+        .deploys-grid,
         .pods-grid {
           grid-template-columns: 1fr;
         }
@@ -591,8 +636,8 @@
           <a class="active" data-view="overview" href="#">集群概览</a>
           <a data-view="namespaces" href="#">命名空间</a>
           <a data-view="nodes" href="#">节点管理</a>
+          <a data-view="deployments" href="#">部署与发布</a>
           <a data-view="pods" href="#">Pod 管理</a>
-          <a href="#">部署与发布</a>
           <a href="#">网络与服务</a>
           <a href="#">日志事件</a>
         </nav>
@@ -704,6 +749,44 @@
             </div>
           </section>
 
+          <section class="view" data-view="deployments">
+            <div class="deploys-grid">
+              <div class="card deploy-card">
+                <div>
+                  <h2>DEPLOYMENT LIST</h2>
+                  <p class="subtitle">跟踪部署版本，掌握副本健康情况</p>
+                </div>
+                <div id="deployments-feedback" class="feedback-box"></div>
+                <div class="table-wrapper">
+                  <table class="deploy-table" id="deploy-table">
+                    <thead>
+                      <tr>
+                        <th>名称</th>
+                        <th>命名空间</th>
+                        <th>就绪/期望</th>
+                        <th>更新中</th>
+                        <th>策略</th>
+                        <th>镜像</th>
+                        <th>状态</th>
+                        <th>存在时间</th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
+              <div class="card deploy-detail" id="deploy-detail">
+                <div>
+                  <h2>DEPLOYMENT DETAIL</h2>
+                  <p class="subtitle">选择左侧 Deployment 查看详情与扩缩容</p>
+                </div>
+                <div id="deploy-detail-content">
+                  <p class="subtitle">暂未选择 Deployment</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
           <section class="view" data-view="pods">
             <div class="pods-grid">
               <div class="card pod-card">
@@ -757,6 +840,14 @@
         nodes: {
           title: '节点管理',
           subtitle: '关注节点运行状态，洞察资源分布与异常信号'
+        },
+        deployments: {
+          title: '部署与发布',
+          subtitle: '监控 Deployment 副本状态并快速模拟扩缩容'
+        },
+        pods: {
+          title: 'Pod 管理',
+          subtitle: '排查容器状态、查看日志与调度事件'
         }
       };
 
@@ -766,6 +857,8 @@
 
       let nodesCache = [];
       let activeNode = null;
+      let deploymentsCache = [];
+      let activeDeployment = null;
       let podsCache = [];
       let activePod = null;
 
@@ -1194,6 +1287,243 @@
         box.style.display = 'block';
       }
 
+      async function fetchDeployments({ retainSelection = false } = {}) {
+        try {
+          const res = await fetch('/api/deployments', { cache: 'no-store' });
+          if (!res.ok) {
+            throw new Error(`请求失败: ${res.status}`);
+          }
+          const data = await res.json();
+          deploymentsCache = Array.isArray(data) ? data : [];
+          renderDeploymentsTable(deploymentsCache);
+
+          if (!retainSelection || !activeDeployment || !deploymentsCache.find(d => d.name === activeDeployment)) {
+            activeDeployment = deploymentsCache.length ? deploymentsCache[0].name : null;
+          }
+
+          highlightDeploymentSelection();
+
+          if (activeDeployment) {
+            await fetchDeploymentDetail(activeDeployment, { silent: true });
+          } else {
+            renderDeploymentDetail(null);
+          }
+
+          showDeploymentsFeedback('Deployment 列表已刷新', true);
+        } catch (err) {
+          showDeploymentsFeedback(`获取 Deployment 列表失败：${err.message}`, false);
+        }
+      }
+
+      function renderDeploymentsTable(deployments) {
+        const tbody = document.querySelector('#deploy-table tbody');
+        tbody.innerHTML = '';
+
+        if (!deployments || deployments.length === 0) {
+          const row = document.createElement('tr');
+          row.innerHTML = '<td colspan="8">暂无 Deployment 记录</td>';
+          tbody.appendChild(row);
+          return;
+        }
+
+        deployments.forEach(dep => {
+          const row = document.createElement('tr');
+          row.dataset.name = dep.name;
+          row.className = dep.name === activeDeployment ? 'active' : '';
+          row.innerHTML = `
+            <td>${escapeHtml(dep.name)}</td>
+            <td>${escapeHtml(dep.namespace)}</td>
+            <td>${dep.readyReplicas}/${dep.desiredReplicas}</td>
+            <td>${dep.updatedReplicas}</td>
+            <td>${escapeHtml(dep.strategy)}</td>
+            <td>${(dep.images || []).map(escapeHtml).join('<br />')}</td>
+            <td>${escapeHtml(dep.status || '')}</td>
+            <td>${escapeHtml(dep.age || '-')}</td>
+          `;
+          row.addEventListener('click', () => {
+            activeDeployment = dep.name;
+            highlightDeploymentSelection();
+            fetchDeploymentDetail(dep.name);
+          });
+          tbody.appendChild(row);
+        });
+      }
+
+      function highlightDeploymentSelection() {
+        document.querySelectorAll('#deploy-table tbody tr').forEach(row => {
+          row.classList.toggle('active', row.dataset.name === activeDeployment);
+        });
+      }
+
+      async function fetchDeploymentDetail(name, { silent = false } = {}) {
+        if (!name) {
+          renderDeploymentDetail(null);
+          return;
+        }
+
+        try {
+          const res = await fetch(`/api/deployments/${encodeURIComponent(name)}`, { cache: 'no-store' });
+          if (!res.ok) {
+            if (res.status === 404) {
+              throw new Error('Deployment 不存在');
+            }
+            throw new Error(`请求失败: ${res.status}`);
+          }
+          const detail = await res.json();
+          renderDeploymentDetail(detail);
+          if (!silent) {
+            showDeploymentsFeedback(`Deployment ${name} 详情已更新`, true);
+          }
+        } catch (err) {
+          showDeploymentsFeedback(`获取 Deployment ${name} 详情失败：${err.message}`, false);
+        }
+      }
+
+      async function scaleDeployment(name, replicas) {
+        try {
+          const res = await fetch(`/api/deployments/${encodeURIComponent(name)}/scale`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ replicas })
+          });
+
+          if (res.status === 200) {
+            const detail = await res.json();
+            renderDeploymentDetail(detail);
+            showDeploymentsFeedback(`Deployment ${name} 副本数已更新为 ${replicas}`, true);
+            fetchDeployments({ retainSelection: true });
+          } else {
+            const data = await res.json().catch(() => null);
+            const message = data && data.error ? data.error : `请求失败：${res.status}`;
+            showDeploymentsFeedback(message, false);
+          }
+        } catch (err) {
+          showDeploymentsFeedback(`扩缩容失败：${err.message}`, false);
+        }
+      }
+
+      function renderDeploymentDetail(detail) {
+        const container = document.getElementById('deploy-detail-content');
+        if (!detail) {
+          container.innerHTML = '<p class="subtitle">暂未选择 Deployment</p>';
+          return;
+        }
+
+        const status = (detail.status || '').toLowerCase();
+        let statusClass = 'unknown';
+        if (status === 'healthy') {
+          statusClass = 'ready';
+        } else if (status === 'down') {
+          statusClass = 'notready';
+        }
+
+        const labels = detail.labels && Object.keys(detail.labels).length
+          ? Object.entries(detail.labels).map(([k, v]) => `<li>${escapeHtml(k)} = ${escapeHtml(v)}</li>`).join('')
+          : '<li>暂无标签</li>';
+
+        const selector = detail.selector && Object.keys(detail.selector).length
+          ? Object.entries(detail.selector).map(([k, v]) => `<li>${escapeHtml(k)} = ${escapeHtml(v)}</li>`).join('')
+          : '<li>暂无选择器</li>';
+
+        const containers = detail.containers && detail.containers.length
+          ? detail.containers
+              .map(c => `
+                <li>
+                  <strong>${escapeHtml(c.name)}</strong>
+                  <small>镜像：${escapeHtml(c.image)}</small>
+                  <small>端口：${(c.ports || []).length ? c.ports.join(', ') : '无'}</small>
+                </li>
+              `)
+              .join('')
+          : '<li>暂无容器信息</li>';
+
+        const conditions = detail.conditions && detail.conditions.length
+          ? detail.conditions
+              .map(c => `
+                <li>
+                  <strong>${escapeHtml(c.type)} · ${escapeHtml(c.status)}</strong>
+                  <small>${escapeHtml(c.message || '')}</small>
+                  <small>最后更新：${escapeHtml(new Date(c.lastUpdate).toLocaleString())}</small>
+                </li>
+              `)
+              .join('')
+          : '<li>暂无条件信息</li>';
+
+        container.innerHTML = `
+          <div class="detail-header">
+            <h3>${escapeHtml(detail.name)}</h3>
+            <span class="badge ${statusClass}">${escapeHtml(detail.status || '')}</span>
+          </div>
+          <form id="deploy-scale-form" class="deploy-form">
+            <label for="deploy-scale-input">目标副本数</label>
+            <input id="deploy-scale-input" name="replicas" type="number" min="0" max="200" value="${detail.desiredReplicas}" />
+            <button type="submit">应用扩缩容</button>
+          </form>
+          <div class="detail-meta">
+            <div class="item">
+              <strong>命名空间</strong>
+              <span>${escapeHtml(detail.namespace)}</span>
+            </div>
+            <div class="item">
+              <strong>副本情况</strong>
+              <span>就绪 ${detail.readyReplicas} · 目标 ${detail.desiredReplicas} · 更新中 ${detail.updatedReplicas}</span>
+            </div>
+            <div class="item">
+              <strong>策略</strong>
+              <span>${escapeHtml(detail.strategy || 'RollingUpdate')}</span>
+            </div>
+            <div class="item">
+              <strong>镜像版本</strong>
+              <span>${(detail.images || []).map(escapeHtml).join('<br />') || '-'}</span>
+            </div>
+            <div class="item">
+              <strong>当前修订</strong>
+              <span>${detail.revision}</span>
+            </div>
+            <div class="item">
+              <strong>最后更新</strong>
+              <span>${detail.lastUpdated ? new Date(detail.lastUpdated).toLocaleString() : '未知'}</span>
+            </div>
+          </div>
+          <div class="detail-section">
+            <h3>标签</h3>
+            <ul>${labels}</ul>
+          </div>
+          <div class="detail-section">
+            <h3>选择器</h3>
+            <ul>${selector}</ul>
+          </div>
+          <div class="detail-section">
+            <h3>容器模板</h3>
+            <ul>${containers}</ul>
+          </div>
+          <div class="detail-section">
+            <h3>条件状态</h3>
+            <ul>${conditions}</ul>
+          </div>
+        `;
+
+        const form = container.querySelector('#deploy-scale-form');
+        form.addEventListener('submit', event => {
+          event.preventDefault();
+          const input = form.querySelector('#deploy-scale-input');
+          const value = Number(input.value);
+          if (Number.isNaN(value) || value < 0) {
+            showDeploymentsFeedback('请输入合法的副本数（大于等于 0）', false);
+            return;
+          }
+          scaleDeployment(detail.name, value);
+        });
+      }
+
+      function showDeploymentsFeedback(message, success) {
+        const box = document.getElementById('deployments-feedback');
+        box.textContent = message;
+        box.classList.remove('success', 'error');
+        box.classList.add(success ? 'success' : 'error');
+        box.style.display = 'block';
+      }
+
       async function fetchPods({ retainSelection = false } = {}) {
         try {
           const res = await fetch('/api/pods', { cache: 'no-store' });
@@ -1393,6 +1723,8 @@
           fetchNamespaces();
         } else if (activeView === 'nodes') {
           fetchNodes({ retainSelection: true });
+        } else if (activeView === 'deployments') {
+          fetchDeployments({ retainSelection: true });
         } else if (activeView === 'pods') {
           fetchPods({ retainSelection: true });
         }
@@ -1404,6 +1736,7 @@
       fetchOverview();
       fetchNamespaces();
       fetchNodes();
+      fetchDeployments();
       fetchPods();
 
       setInterval(() => {

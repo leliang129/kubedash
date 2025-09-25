@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"k8s_dashboard/internal/cluster"
+	"k8s_dashboard/internal/deploy"
 	"k8s_dashboard/internal/namespace"
 	"k8s_dashboard/internal/node"
 	"k8s_dashboard/internal/pod"
@@ -12,11 +13,12 @@ import (
 
 // Server exposes HTTP handlers for the dashboard application.
 type Server struct {
-	mux        *http.ServeMux
-	now        func() time.Time
-	namespaces *namespace.Store
-	nodes      *node.Store
-	pods       *pod.Store
+	mux         *http.ServeMux
+	now         func() time.Time
+	namespaces  *namespace.Store
+	nodes       *node.Store
+	pods        *pod.Store
+	deployments *deploy.Store
 }
 
 // New constructs a server with default dependencies.
@@ -27,11 +29,12 @@ func New() *Server {
 // NewWithClock allows injection of a deterministic time source for testing.
 func NewWithClock(now func() time.Time) *Server {
 	s := &Server{
-		mux:        http.NewServeMux(),
-		now:        now,
-		namespaces: namespace.NewStore(now()),
-		nodes:      node.NewStore(now()),
-		pods:       pod.NewStore(now()),
+		mux:         http.NewServeMux(),
+		now:         now,
+		namespaces:  namespace.NewStore(now()),
+		nodes:       node.NewStore(now()),
+		pods:        pod.NewStore(now()),
+		deployments: deploy.NewStore(now()),
 	}
 	s.registerRoutes()
 	return s
@@ -51,6 +54,8 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("/api/nodes/", s.handleNodeByName)
 	s.mux.HandleFunc("/api/pods", s.handlePods)
 	s.mux.HandleFunc("/api/pods/", s.handlePodByName)
+	s.mux.HandleFunc("/api/deployments", s.handleDeployments)
+	s.mux.HandleFunc("/api/deployments/", s.handleDeploymentByName)
 }
 
 func (s *Server) handleClusterOverview(w http.ResponseWriter, r *http.Request) {
