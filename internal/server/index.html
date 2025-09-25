@@ -337,7 +337,9 @@
 
       .namespace-card,
       .node-card,
-      .node-detail {
+      .node-detail,
+      .pod-card,
+      .pod-detail {
         display: flex;
         flex-direction: column;
         gap: 20px;
@@ -426,6 +428,21 @@
         background: rgba(56, 189, 248, 0.18);
       }
 
+      .pods-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 24px;
+      }
+
+      .pod-table tbody tr {
+        cursor: pointer;
+        transition: background 0.2s ease;
+      }
+
+      .pod-table tbody tr.active {
+        background: rgba(56, 189, 248, 0.18);
+      }
+
       .badge {
         display: inline-block;
         padding: 4px 10px;
@@ -451,7 +468,8 @@
         color: var(--text-secondary);
       }
 
-      .node-detail h3 {
+      .node-detail h3,
+      .pod-detail h3 {
         margin: 0;
         font-size: 20px;
       }
@@ -486,7 +504,8 @@
         margin-bottom: 4px;
       }
 
-      .detail-section ul {
+      .detail-section ul,
+      .events-list {
         list-style: none;
         padding: 0;
         margin: 0;
@@ -494,7 +513,8 @@
         gap: 8px;
       }
 
-      .detail-section li {
+      .detail-section li,
+      .events-list li {
         background: rgba(15, 23, 42, 0.35);
         border-radius: 10px;
         padding: 10px 12px;
@@ -503,12 +523,25 @@
         gap: 4px;
       }
 
-      .detail-section small {
+      .detail-section small,
+      .events-list small {
         color: var(--text-secondary);
       }
 
+      .log-panel {
+        background: rgba(15, 23, 42, 0.35);
+        border-radius: 12px;
+        padding: 12px 14px;
+        max-height: 220px;
+        overflow-y: auto;
+        font-family: "JetBrains Mono", "Fira Code", monospace;
+        font-size: 13px;
+        line-height: 1.6;
+      }
+
       @media (max-width: 1200px) {
-        .nodes-grid {
+        .nodes-grid,
+        .pods-grid {
           grid-template-columns: 1fr;
         }
       }
@@ -558,7 +591,7 @@
           <a class="active" data-view="overview" href="#">集群概览</a>
           <a data-view="namespaces" href="#">命名空间</a>
           <a data-view="nodes" href="#">节点管理</a>
-          <a href="#">Pod 监控</a>
+          <a data-view="pods" href="#">Pod 管理</a>
           <a href="#">部署与发布</a>
           <a href="#">网络与服务</a>
           <a href="#">日志事件</a>
@@ -670,6 +703,43 @@
               </div>
             </div>
           </section>
+
+          <section class="view" data-view="pods">
+            <div class="pods-grid">
+              <div class="card pod-card">
+                <div>
+                  <h2>POD LIST</h2>
+                  <p class="subtitle">查看各命名空间的 Pod 状态与调度信息</p>
+                </div>
+                <div id="pods-feedback" class="feedback-box"></div>
+                <div class="table-wrapper">
+                  <table class="pod-table" id="pod-table">
+                    <thead>
+                      <tr>
+                        <th>名称</th>
+                        <th>命名空间</th>
+                        <th>状态</th>
+                        <th>容器</th>
+                        <th>重启次数</th>
+                        <th>节点</th>
+                        <th>存在时间</th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
+              <div class="card pod-detail" id="pod-detail">
+                <div>
+                  <h2>POD DETAIL</h2>
+                  <p class="subtitle">选择左侧 Pod 查看容器状态与日志</p>
+                </div>
+                <div id="pod-detail-content">
+                  <p class="subtitle">暂未选择 Pod</p>
+                </div>
+              </div>
+            </div>
+          </section>
         </div>
       </main>
     </div>
@@ -696,6 +766,8 @@
 
       let nodesCache = [];
       let activeNode = null;
+      let podsCache = [];
+      let activePod = null;
 
       navLinks.forEach(link => {
         link.addEventListener('click', event => {
@@ -706,6 +778,15 @@
           }
         });
       });
+
+      function escapeHtml(str) {
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
 
       function switchView(view) {
         if (activeView === view) {
@@ -1113,6 +1194,198 @@
         box.style.display = 'block';
       }
 
+      async function fetchPods({ retainSelection = false } = {}) {
+        try {
+          const res = await fetch('/api/pods', { cache: 'no-store' });
+          if (!res.ok) {
+            throw new Error(`请求失败: ${res.status}`);
+          }
+          const data = await res.json();
+          podsCache = Array.isArray(data) ? data : [];
+          renderPodsTable(podsCache);
+
+          if (!retainSelection || !activePod || !podsCache.find(p => p.name === activePod)) {
+            activePod = podsCache.length ? podsCache[0].name : null;
+          }
+
+          highlightPodSelection();
+
+          if (activePod) {
+            await fetchPodDetail(activePod, { silent: true });
+          } else {
+            renderPodDetail(null);
+          }
+
+          showPodsFeedback('Pod 列表已刷新', true);
+        } catch (err) {
+          showPodsFeedback(`Pod 列表获取失败：${err.message}`, false);
+        }
+      }
+
+      function renderPodsTable(pods) {
+        const tbody = document.querySelector('#pod-table tbody');
+        tbody.innerHTML = '';
+
+        if (!pods || pods.length === 0) {
+          const row = document.createElement('tr');
+          row.innerHTML = '<td colspan="7">暂无 Pod 记录</td>';
+          tbody.appendChild(row);
+          return;
+        }
+
+        pods.forEach(pod => {
+          const row = document.createElement('tr');
+          row.dataset.name = pod.name;
+          row.className = pod.name === activePod ? 'active' : '';
+          row.innerHTML = `
+            <td>${escapeHtml(pod.name)}</td>
+            <td>${escapeHtml(pod.namespace)}</td>
+            <td>${escapeHtml(pod.status)}</td>
+            <td>${escapeHtml(pod.readyContainers)}</td>
+            <td>${pod.restarts}</td>
+            <td>${escapeHtml(pod.node || '未调度')}</td>
+            <td>${escapeHtml(pod.age || '-')}</td>
+          `;
+          row.addEventListener('click', () => {
+            activePod = pod.name;
+            highlightPodSelection();
+            fetchPodDetail(pod.name);
+          });
+          tbody.appendChild(row);
+        });
+      }
+
+      function highlightPodSelection() {
+        document.querySelectorAll('#pod-table tbody tr').forEach(row => {
+          row.classList.toggle('active', row.dataset.name === activePod);
+        });
+      }
+
+      async function fetchPodDetail(name, { silent = false } = {}) {
+        if (!name) {
+          renderPodDetail(null);
+          return;
+        }
+
+        try {
+          const res = await fetch(`/api/pods/${encodeURIComponent(name)}`, { cache: 'no-store' });
+          if (!res.ok) {
+            if (res.status === 404) {
+              throw new Error('Pod 不存在');
+            }
+            throw new Error(`请求失败: ${res.status}`);
+          }
+          const detail = await res.json();
+          renderPodDetail(detail);
+          if (!silent) {
+            showPodsFeedback(`Pod ${name} 详情已更新`, true);
+          }
+        } catch (err) {
+          showPodsFeedback(`获取 Pod ${name} 详情失败：${err.message}`, false);
+        }
+      }
+
+      function renderPodDetail(detail) {
+        const container = document.getElementById('pod-detail-content');
+        if (!detail) {
+          container.innerHTML = '<p class="subtitle">暂未选择 Pod</p>';
+          return;
+        }
+
+        const status = (detail.status || '').toLowerCase();
+        let statusClass = 'unknown';
+        if (status === 'running' || status === 'succeeded') {
+          statusClass = 'ready';
+        } else if (status === 'failed' || status === 'crashloopbackoff') {
+          statusClass = 'notready';
+        }
+
+        const images = (detail.images || []).map(img => escapeHtml(img)).join('<br />') || '-';
+        const containers = detail.containers && detail.containers.length
+          ? detail.containers
+              .map(c => `
+                <li>
+                  <strong>${escapeHtml(c.name)}</strong>
+                  <small>镜像：${escapeHtml(c.image)}</small>
+                  <small>${c.ready ? '状态：已就绪' : '状态：未就绪'} · 重启 ${c.restartCount}</small>
+                </li>
+              `)
+              .join('')
+          : '<li>暂无容器信息</li>';
+
+        const logsText = detail.logs && detail.logs.length
+          ? escapeHtml(detail.logs.join('\n'))
+          : '暂无日志输出';
+
+        const events = detail.events && detail.events.length
+          ? detail.events
+              .map(ev => {
+                const ts = ev.timestamp ? new Date(ev.timestamp).toLocaleString() : '未知时间';
+                return `
+                  <li>
+                    <strong>${escapeHtml(ev.type)} · ${escapeHtml(ev.reason)}</strong>
+                    <small>${escapeHtml(ev.message)}</small>
+                    <small>${escapeHtml(ts)}</small>
+                  </li>
+                `;
+              })
+              .join('')
+          : '<li>暂无事件信息</li>';
+
+        container.innerHTML = `
+          <div class="detail-header">
+            <h3>${escapeHtml(detail.name)}</h3>
+            <span class="badge ${statusClass}">${escapeHtml(detail.status)}</span>
+          </div>
+          <div class="detail-meta">
+            <div class="item">
+              <strong>命名空间</strong>
+              <span>${escapeHtml(detail.namespace)}</span>
+            </div>
+            <div class="item">
+              <strong>所在节点</strong>
+              <span>${escapeHtml(detail.node || '未调度')}</span>
+            </div>
+            <div class="item">
+              <strong>容器就绪</strong>
+              <span>${escapeHtml(detail.readyContainers)}</span>
+            </div>
+            <div class="item">
+              <strong>重启次数</strong>
+              <span>${detail.restarts}</span>
+            </div>
+            <div class="item">
+              <strong>镜像</strong>
+              <span>${images}</span>
+            </div>
+            <div class="item">
+              <strong>存在时间</strong>
+              <span>${escapeHtml(detail.age || '-')}</span>
+            </div>
+          </div>
+          <div class="detail-section">
+            <h3>容器</h3>
+            <ul>${containers}</ul>
+          </div>
+          <div class="detail-section">
+            <h3>最新日志</h3>
+            <div class="log-panel"><pre>${logsText}</pre></div>
+          </div>
+          <div class="detail-section">
+            <h3>事件</h3>
+            <ul class="events-list">${events}</ul>
+          </div>
+        `;
+      }
+
+      function showPodsFeedback(message, success) {
+        const box = document.getElementById('pods-feedback');
+        box.textContent = message;
+        box.classList.remove('success', 'error');
+        box.classList.add(success ? 'success' : 'error');
+        box.style.display = 'block';
+      }
+
       function handleManualRefresh() {
         if (activeView === 'overview') {
           fetchOverview();
@@ -1120,6 +1393,8 @@
           fetchNamespaces();
         } else if (activeView === 'nodes') {
           fetchNodes({ retainSelection: true });
+        } else if (activeView === 'pods') {
+          fetchPods({ retainSelection: true });
         }
       }
 
@@ -1129,6 +1404,7 @@
       fetchOverview();
       fetchNamespaces();
       fetchNodes();
+      fetchPods();
 
       setInterval(() => {
         handleManualRefresh();

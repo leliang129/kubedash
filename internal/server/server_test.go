@@ -187,3 +187,52 @@ func TestHandleNodesEndpoints(t *testing.T) {
 		t.Fatalf("expected 404, got %d", notFoundRR.Code)
 	}
 }
+
+func TestHandlePodsEndpoints(t *testing.T) {
+	fixedTime := time.Date(2024, 7, 12, 15, 30, 0, 0, time.UTC)
+	srv := NewWithClock(func() time.Time {
+		return fixedTime
+	})
+
+	listReq := httptest.NewRequest(http.MethodGet, "/api/pods", nil)
+	listRR := httptest.NewRecorder()
+	srv.ServeHTTP(listRR, listReq)
+
+	if listRR.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", listRR.Code)
+	}
+
+	var pods []map[string]any
+	if err := json.NewDecoder(listRR.Body).Decode(&pods); err != nil {
+		t.Fatalf("decode pods list: %v", err)
+	}
+
+	if len(pods) == 0 {
+		t.Fatalf("expected pods in list")
+	}
+
+	detailReq := httptest.NewRequest(http.MethodGet, "/api/pods/frontend-7d8fdc9f7c-abc12", nil)
+	detailRR := httptest.NewRecorder()
+	srv.ServeHTTP(detailRR, detailReq)
+
+	if detailRR.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", detailRR.Code)
+	}
+
+	var detail map[string]any
+	if err := json.NewDecoder(detailRR.Body).Decode(&detail); err != nil {
+		t.Fatalf("decode pod detail: %v", err)
+	}
+
+	if detail["name"] != "frontend-7d8fdc9f7c-abc12" {
+		t.Fatalf("unexpected pod name %v", detail["name"])
+	}
+
+	notFoundReq := httptest.NewRequest(http.MethodGet, "/api/pods/missing", nil)
+	notFoundRR := httptest.NewRecorder()
+	srv.ServeHTTP(notFoundRR, notFoundReq)
+
+	if notFoundRR.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d", notFoundRR.Code)
+	}
+}
