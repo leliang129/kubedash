@@ -138,3 +138,52 @@ func TestHandleNamespaceCreateAndDelete(t *testing.T) {
 		t.Fatalf("expected status 404, got %d", delRR2.Code)
 	}
 }
+
+func TestHandleNodesEndpoints(t *testing.T) {
+	fixedTime := time.Date(2024, 7, 12, 15, 30, 0, 0, time.UTC)
+	srv := NewWithClock(func() time.Time {
+		return fixedTime
+	})
+
+	listReq := httptest.NewRequest(http.MethodGet, "/api/nodes", nil)
+	listRR := httptest.NewRecorder()
+	srv.ServeHTTP(listRR, listReq)
+
+	if listRR.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", listRR.Code)
+	}
+
+	var nodes []map[string]any
+	if err := json.NewDecoder(listRR.Body).Decode(&nodes); err != nil {
+		t.Fatalf("decode nodes list: %v", err)
+	}
+
+	if len(nodes) == 0 {
+		t.Fatalf("expected nodes in list")
+	}
+
+	detailReq := httptest.NewRequest(http.MethodGet, "/api/nodes/node-1", nil)
+	detailRR := httptest.NewRecorder()
+	srv.ServeHTTP(detailRR, detailReq)
+
+	if detailRR.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", detailRR.Code)
+	}
+
+	var detail map[string]any
+	if err := json.NewDecoder(detailRR.Body).Decode(&detail); err != nil {
+		t.Fatalf("decode node detail: %v", err)
+	}
+
+	if detail["name"] != "node-1" {
+		t.Fatalf("expected node-1 detail, got %v", detail["name"])
+	}
+
+	notFoundReq := httptest.NewRequest(http.MethodGet, "/api/nodes/ghost", nil)
+	notFoundRR := httptest.NewRecorder()
+	srv.ServeHTTP(notFoundRR, notFoundReq)
+
+	if notFoundRR.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d", notFoundRR.Code)
+	}
+}

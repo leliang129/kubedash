@@ -316,7 +316,28 @@
         border: 1px solid rgba(239, 68, 68, 0.35);
       }
 
-      .namespace-card {
+      .feedback-box {
+        padding: 12px 16px;
+        border-radius: 12px;
+        font-size: 14px;
+        display: none;
+      }
+
+      .feedback-box.success {
+        background: rgba(34, 197, 94, 0.15);
+        color: var(--success);
+        border: 1px solid rgba(34, 197, 94, 0.35);
+      }
+
+      .feedback-box.error {
+        background: rgba(239, 68, 68, 0.15);
+        color: var(--danger);
+        border: 1px solid rgba(239, 68, 68, 0.35);
+      }
+
+      .namespace-card,
+      .node-card,
+      .node-detail {
         display: flex;
         flex-direction: column;
         gap: 20px;
@@ -348,65 +369,148 @@
         cursor: pointer;
       }
 
-      .namespace-feedback {
-        padding: 12px 16px;
-        border-radius: 12px;
-        font-size: 14px;
-        display: none;
-      }
-
-      .namespace-feedback.success {
-        background: rgba(34, 197, 94, 0.15);
-        color: var(--success);
-        border: 1px solid rgba(34, 197, 94, 0.35);
-      }
-
-      .namespace-feedback.error {
-        background: rgba(239, 68, 68, 0.15);
-        color: var(--danger);
-        border: 1px solid rgba(239, 68, 68, 0.35);
-      }
-
       .table-wrapper {
         overflow-x: auto;
       }
 
-      .namespace-table {
+      table {
         width: 100%;
         border-collapse: collapse;
         font-size: 14px;
-        min-width: 640px;
       }
 
-      .namespace-table thead {
+      thead {
         color: var(--text-secondary);
         text-transform: uppercase;
         letter-spacing: 0.06em;
       }
 
-      .namespace-table th {
+      th {
         text-align: left;
         font-weight: 600;
       }
 
-      .namespace-table th,
-      .namespace-table td {
+      th,
+      td {
         padding: 12px 16px;
         border-bottom: 1px solid rgba(148, 163, 184, 0.15);
         text-align: left;
       }
 
-      .namespace-table tbody tr:hover {
+      tbody tr:hover {
         background: rgba(56, 189, 248, 0.08);
       }
 
-      .namespace-table button {
+      .namespace-table button,
+      .node-table button {
         padding: 6px 12px;
         border-radius: 10px;
         border: 1px solid rgba(239, 68, 68, 0.35);
         background: rgba(239, 68, 68, 0.12);
         color: var(--danger);
         cursor: pointer;
+      }
+
+      .nodes-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 24px;
+      }
+
+      .node-table tbody tr {
+        cursor: pointer;
+        transition: background 0.2s ease;
+      }
+
+      .node-table tbody tr.active {
+        background: rgba(56, 189, 248, 0.18);
+      }
+
+      .badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .badge.ready {
+        background: rgba(34, 197, 94, 0.15);
+        color: var(--success);
+      }
+
+      .badge.notready {
+        background: rgba(239, 68, 68, 0.15);
+        color: var(--danger);
+      }
+
+      .badge.unknown {
+        background: rgba(148, 163, 184, 0.15);
+        color: var(--text-secondary);
+      }
+
+      .node-detail h3 {
+        margin: 0;
+        font-size: 20px;
+      }
+
+      .detail-meta,
+      .detail-metrics,
+      .detail-section {
+        display: grid;
+        gap: 12px;
+      }
+
+      .detail-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .detail-meta {
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      }
+
+      .detail-meta .item,
+      .metric-pill {
+        background: rgba(15, 23, 42, 0.35);
+        border-radius: 12px;
+        padding: 12px 14px;
+      }
+
+      .metric-pill strong {
+        display: block;
+        margin-bottom: 4px;
+      }
+
+      .detail-section ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: grid;
+        gap: 8px;
+      }
+
+      .detail-section li {
+        background: rgba(15, 23, 42, 0.35);
+        border-radius: 10px;
+        padding: 10px 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .detail-section small {
+        color: var(--text-secondary);
+      }
+
+      @media (max-width: 1200px) {
+        .nodes-grid {
+          grid-template-columns: 1fr;
+        }
       }
 
       @media (max-width: 960px) {
@@ -453,7 +557,7 @@
         <nav class="menu">
           <a class="active" data-view="overview" href="#">集群概览</a>
           <a data-view="namespaces" href="#">命名空间</a>
-          <a href="#">节点管理</a>
+          <a data-view="nodes" href="#">节点管理</a>
           <a href="#">Pod 监控</a>
           <a href="#">部署与发布</a>
           <a href="#">网络与服务</a>
@@ -512,7 +616,7 @@
                 />
                 <button type="submit">创建命名空间</button>
               </form>
-              <div id="namespace-feedback" class="namespace-feedback"></div>
+              <div id="namespace-feedback" class="feedback-box"></div>
               <div class="table-wrapper">
                 <table class="namespace-table" id="namespace-table">
                   <thead>
@@ -530,6 +634,42 @@
               </div>
             </div>
           </section>
+
+          <section class="view" data-view="nodes">
+            <div class="nodes-grid">
+              <div class="card node-card">
+                <div>
+                  <h2>NODE LIST</h2>
+                  <p class="subtitle">观察节点的资源利用率与运行状况</p>
+                </div>
+                <div id="nodes-feedback" class="feedback-box"></div>
+                <div class="table-wrapper">
+                  <table class="node-table" id="node-table">
+                    <thead>
+                      <tr>
+                        <th>名称</th>
+                        <th>状态</th>
+                        <th>角色</th>
+                        <th>CPU</th>
+                        <th>内存</th>
+                        <th>Pods</th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
+              <div class="card node-detail" id="node-detail">
+                <div>
+                  <h2>NODE DETAIL</h2>
+                  <p class="subtitle">选择左侧节点以查看详细信息</p>
+                </div>
+                <div id="node-detail-content">
+                  <p class="subtitle">暂未选择节点</p>
+                </div>
+              </div>
+            </div>
+          </section>
         </div>
       </main>
     </div>
@@ -543,12 +683,19 @@
         namespaces: {
           title: '命名空间管理',
           subtitle: '创建、浏览和维护集群中的资源隔离边界'
+        },
+        nodes: {
+          title: '节点管理',
+          subtitle: '关注节点运行状态，洞察资源分布与异常信号'
         }
       };
 
       const navLinks = document.querySelectorAll('.menu a[data-view]');
       const views = document.querySelectorAll('.view');
       let activeView = 'overview';
+
+      let nodesCache = [];
+      let activeNode = null;
 
       navLinks.forEach(link => {
         link.addEventListener('click', event => {
@@ -776,11 +923,203 @@
         box.style.display = 'block';
       }
 
+      async function fetchNodes({ retainSelection = false } = {}) {
+        try {
+          const res = await fetch('/api/nodes', { cache: 'no-store' });
+          if (!res.ok) {
+            throw new Error(`请求失败: ${res.status}`);
+          }
+          const data = await res.json();
+          nodesCache = Array.isArray(data) ? data : [];
+          renderNodesTable(nodesCache);
+
+          if (!retainSelection || !activeNode || !nodesCache.find(n => n.name === activeNode)) {
+            activeNode = nodesCache.length ? nodesCache[0].name : null;
+          }
+
+          if (activeNode) {
+            await fetchNodeDetail(activeNode, { silent: true });
+          } else {
+            renderNodeDetail(null);
+          }
+
+          showNodesFeedback('节点列表已刷新', true);
+        } catch (err) {
+          showNodesFeedback(`节点列表获取失败：${err.message}`, false);
+        }
+      }
+
+      function renderNodesTable(nodes) {
+        const tbody = document.querySelector('#node-table tbody');
+        tbody.innerHTML = '';
+
+        if (!nodes || nodes.length === 0) {
+          const row = document.createElement('tr');
+          row.innerHTML = '<td colspan="6">暂未发现节点</td>';
+          tbody.appendChild(row);
+          return;
+        }
+
+        nodes.forEach(node => {
+          const row = document.createElement('tr');
+          row.dataset.name = node.name;
+          row.className = node.name === activeNode ? 'active' : '';
+          row.innerHTML = `
+            <td>${node.name}</td>
+            <td>${node.status}</td>
+            <td>${(node.roles || []).join(', ') || '未知'}</td>
+            <td>${node.cpu.used}/${node.cpu.capacity} ${node.cpu.unit} (${node.cpu.percentage}%)</td>
+            <td>${node.memory.used}/${node.memory.capacity} ${node.memory.unit} (${node.memory.percentage}%)</td>
+            <td>${node.pods.running + node.pods.pending}/${node.pods.capacity}</td>
+          `;
+          row.addEventListener('click', () => {
+            activeNode = node.name;
+            highlightNodeSelection();
+            fetchNodeDetail(node.name);
+          });
+          tbody.appendChild(row);
+        });
+      }
+
+      function highlightNodeSelection() {
+        document.querySelectorAll('#node-table tbody tr').forEach(row => {
+          row.classList.toggle('active', row.dataset.name === activeNode);
+        });
+      }
+
+      async function fetchNodeDetail(name, { silent = false } = {}) {
+        if (!name) {
+          renderNodeDetail(null);
+          return;
+        }
+
+        try {
+          const res = await fetch(`/api/nodes/${encodeURIComponent(name)}`, { cache: 'no-store' });
+          if (!res.ok) {
+            if (res.status === 404) {
+              throw new Error('节点不存在');
+            }
+            throw new Error(`请求失败: ${res.status}`);
+          }
+          const detail = await res.json();
+          renderNodeDetail(detail);
+          if (!silent) {
+            showNodesFeedback(`节点 ${name} 详情已更新`, true);
+          }
+        } catch (err) {
+          showNodesFeedback(`获取节点 ${name} 详情失败：${err.message}`, false);
+        }
+      }
+
+      function renderNodeDetail(detail) {
+        const container = document.getElementById('node-detail-content');
+        if (!detail) {
+          container.innerHTML = '<p class="subtitle">暂未选择节点</p>';
+          return;
+        }
+
+        const statusClass = detail.status.toLowerCase() === 'ready' ? 'ready' : detail.status.toLowerCase() === 'notready' ? 'notready' : 'unknown';
+        const roles = (detail.roles || []).join(', ') || '未设置';
+
+        const labelList = detail.labels
+          ? Object.entries(detail.labels)
+              .map(([k, v]) => `<li>${k} = ${v}</li>`)
+              .join('')
+          : '';
+
+        const taints = detail.taints && detail.taints.length
+          ? detail.taints.map(t => `<li>${t}</li>`).join('')
+          : '<li>无污点</li>';
+
+        const conditions = detail.conditions && detail.conditions.length
+          ? detail.conditions
+              .map(
+                c => `
+                  <li>
+                    <strong>${c.type} · ${c.status}</strong>
+                    <small>${c.message}</small>
+                    <small>最近心跳：${new Date(c.lastHeartbeat).toLocaleString()}</small>
+                  </li>
+                `
+              )
+              .join('')
+          : '<li>暂无条件信息</li>';
+
+        container.innerHTML = `
+          <div class="detail-header">
+            <h3>${detail.name}</h3>
+            <span class="badge ${statusClass}">${detail.status}</span>
+          </div>
+          <div class="detail-meta">
+            <div class="item">
+              <strong>角色</strong>
+              <span>${roles}</span>
+            </div>
+            <div class="item">
+              <strong>存在时间</strong>
+              <span>${detail.age}</span>
+            </div>
+            <div class="item">
+              <strong>Kubelet</strong>
+              <span>${detail.kubeletVersion}</span>
+            </div>
+            <div class="item">
+              <strong>容器运行时</strong>
+              <span>${detail.containerRuntime}</span>
+            </div>
+            <div class="item">
+              <strong>操作系统</strong>
+              <span>${detail.osImage}</span>
+            </div>
+            <div class="item">
+              <strong>内核</strong>
+              <span>${detail.kernelVersion}</span>
+            </div>
+          </div>
+          <div class="detail-metrics">
+            <div class="metric-pill">
+              <strong>CPU</strong>
+              <span>${detail.cpu.used} / ${detail.cpu.capacity} ${detail.cpu.unit}（${detail.cpu.percentage}%）</span>
+            </div>
+            <div class="metric-pill">
+              <strong>内存</strong>
+              <span>${detail.memory.used} / ${detail.memory.capacity} ${detail.memory.unit}（${detail.memory.percentage}%）</span>
+            </div>
+            <div class="metric-pill">
+              <strong>Pods</strong>
+              <span>运行中 ${detail.pods.running} · 等待中 ${detail.pods.pending} · 容量 ${detail.pods.capacity}</span>
+            </div>
+          </div>
+          <div class="detail-section">
+            <h3>标签</h3>
+            <ul>${labelList || '<li>暂无标签</li>'}</ul>
+          </div>
+          <div class="detail-section">
+            <h3>污点</h3>
+            <ul>${taints}</ul>
+          </div>
+          <div class="detail-section">
+            <h3>节点条件</h3>
+            <ul>${conditions}</ul>
+          </div>
+        `;
+      }
+
+      function showNodesFeedback(message, success) {
+        const box = document.getElementById('nodes-feedback');
+        box.textContent = message;
+        box.classList.remove('success', 'error');
+        box.classList.add(success ? 'success' : 'error');
+        box.style.display = 'block';
+      }
+
       function handleManualRefresh() {
         if (activeView === 'overview') {
           fetchOverview();
         } else if (activeView === 'namespaces') {
           fetchNamespaces();
+        } else if (activeView === 'nodes') {
+          fetchNodes({ retainSelection: true });
         }
       }
 
@@ -789,6 +1128,7 @@
       // 初始加载
       fetchOverview();
       fetchNamespaces();
+      fetchNodes();
 
       setInterval(() => {
         handleManualRefresh();
