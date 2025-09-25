@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kubernetes Dashboard</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #0f172a;
+        --card-bg: rgba(15, 23, 42, 0.85);
+        --text-primary: #0f172a;
+        --text-secondary: #475569;
+        --accent: #2563eb;
+        --accent-soft: rgba(37, 99, 235, 0.15);
+        --success: #22c55e;
+        --warning: #f97316;
+        --danger: #ef4444;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #020617;
+          --card-bg: rgba(15, 23, 42, 0.9);
+          --text-primary: #e2e8f0;
+          --text-secondary: #94a3b8;
+        }
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Inter", "WenQuanYi Micro Hei", "Microsoft YaHei", sans-serif;
+        background: linear-gradient(160deg, var(--bg) 0%, #1e293b 100%);
+        color: var(--text-primary);
+        min-height: 100vh;
+        padding: 40px;
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+      }
+
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 28px;
+        font-weight: 700;
+      }
+
+      .timestamp {
+        font-size: 14px;
+        color: var(--text-secondary);
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 24px;
+      }
+
+      .card {
+        backdrop-filter: blur(16px);
+        background: var(--card-bg);
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 20px 45px rgba(15, 23, 42, 0.25);
+        border: 1px solid rgba(148, 163, 184, 0.15);
+      }
+
+      .card h2 {
+        margin: 0 0 16px;
+        font-size: 18px;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .info-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: grid;
+        gap: 12px;
+      }
+
+      .info-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 16px;
+        border-radius: 12px;
+        background: rgba(148, 163, 184, 0.12);
+      }
+
+      .metric {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .metric .label {
+        font-size: 14px;
+        color: var(--text-secondary);
+      }
+
+      .metric-bar {
+        height: 8px;
+        border-radius: 999px;
+        background: rgba(148, 163, 184, 0.25);
+        overflow: hidden;
+      }
+
+      .metric-bar span {
+        display: block;
+        height: 100%;
+        border-radius: 999px;
+        background: var(--accent);
+      }
+
+      .events {
+        display: grid;
+        gap: 12px;
+      }
+
+      .event {
+        padding: 16px;
+        border-radius: 12px;
+        background: rgba(148, 163, 184, 0.12);
+        border-left: 4px solid transparent;
+      }
+
+      .event.warning {
+        border-left-color: var(--warning);
+      }
+
+      .event.normal {
+        border-left-color: var(--success);
+      }
+
+      .event .title {
+        font-weight: 600;
+        margin-bottom: 8px;
+      }
+
+      .event .message {
+        color: var(--text-secondary);
+        margin-bottom: 12px;
+      }
+
+      .event .footer {
+        display: flex;
+        justify-content: space-between;
+        font-size: 13px;
+        color: var(--text-secondary);
+      }
+
+      .error {
+        padding: 16px;
+        border-radius: 12px;
+        background: rgba(239, 68, 68, 0.15);
+        color: var(--danger);
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>集群概览</h1>
+      <span class="timestamp" id="last-updated">加载中...</span>
+    </header>
+
+    <div id="error" class="error" style="display: none;"></div>
+
+    <section class="grid">
+      <div class="card" id="cluster-info">
+        <h2>CLUSTER INFO</h2>
+        <ul class="info-list"></ul>
+      </div>
+      <div class="card" id="resource-usage">
+        <h2>RESOURCE USAGE</h2>
+        <div class="metrics"></div>
+      </div>
+      <div class="card" id="recent-events">
+        <h2>RECENT EVENTS</h2>
+        <div class="events"></div>
+      </div>
+    </section>
+
+    <script>
+      async function fetchOverview() {
+        try {
+          const res = await fetch('/api/cluster/overview', { cache: 'no-store' });
+          if (!res.ok) {
+            throw new Error(`请求失败: ${res.status}`);
+          }
+          const data = await res.json();
+          renderOverview(data);
+          document.getElementById('error').style.display = 'none';
+        } catch (err) {
+          const errorBox = document.getElementById('error');
+          errorBox.textContent = `呀，获取概览失败啦：${err.message}`;
+          errorBox.style.display = 'block';
+        }
+      }
+
+      function renderOverview(data) {
+        renderInfo(data.info);
+        renderUsage(data.resourceUsage);
+        renderEvents(data.recentEvents);
+        document.getElementById('last-updated').textContent = `最近更新：${new Date().toLocaleString()}`;
+      }
+
+      function renderInfo(info) {
+        const list = document.querySelector('#cluster-info .info-list');
+        list.innerHTML = '';
+        const entries = [
+          ['集群名称', info.name],
+          ['版本', info.version],
+          ['节点数', info.nodeCount],
+          ['命名空间', info.namespaceCount],
+          ['运行中的 Pod', info.runningPodCount],
+          ['等待中的 Pod', info.pendingPodCount],
+          ['失败的 Pod', info.failedPodCount],
+          ['总 Pod 容量', info.totalPodCapacity]
+        ];
+
+        for (const [label, value] of entries) {
+          const item = document.createElement('li');
+          item.className = 'info-item';
+          item.innerHTML = `<span>${label}</span><span>${value}</span>`;
+          list.appendChild(item);
+        }
+      }
+
+      function renderUsage(usage) {
+        const container = document.querySelector('#resource-usage .metrics');
+        container.innerHTML = '';
+        for (const [key, metric] of Object.entries(usage)) {
+          const percent = metric.total ? Math.min(100, Math.round((metric.used / metric.total) * 100)) : 0;
+          const wrapper = document.createElement('div');
+          wrapper.className = 'metric';
+          wrapper.innerHTML = `
+            <div class="label">${key.toUpperCase()} · ${metric.used} / ${metric.total} ${metric.unit}</div>
+            <div class="metric-bar"><span style="width: ${percent}%"></span></div>
+            <small class="label">采样时间：${metric.timestamp}</small>
+          `;
+          container.appendChild(wrapper);
+        }
+      }
+
+      function renderEvents(events) {
+        const container = document.querySelector('#recent-events .events');
+        container.innerHTML = '';
+        if (!events || events.length === 0) {
+          container.innerHTML = '<p class="label">暂无事件</p>';
+          return;
+        }
+
+        for (const event of events) {
+          const wrapper = document.createElement('div');
+          wrapper.className = `event ${event.type.toLowerCase()}`;
+          wrapper.innerHTML = `
+            <div class="title">${event.reason}</div>
+            <div class="message">${event.message}</div>
+            <div class="footer">
+              <span>${event.object}</span>
+              <span>${event.timestamp}</span>
+            </div>
+          `;
+          container.appendChild(wrapper);
+        }
+      }
+
+      fetchOverview();
+      setInterval(fetchOverview, 15000);
+    </script>
+  </body>
+</html>
