@@ -7,23 +7,29 @@
     <style>
       :root {
         color-scheme: light dark;
-        --bg: #0f172a;
-        --card-bg: rgba(15, 23, 42, 0.85);
-        --text-primary: #0f172a;
-        --text-secondary: #475569;
-        --accent: #2563eb;
-        --accent-soft: rgba(37, 99, 235, 0.15);
+        --bg: #020617;
+        --bg-elevated: rgba(15, 23, 42, 0.85);
+        --sidebar-bg: rgba(2, 6, 23, 0.85);
+        --divider: rgba(148, 163, 184, 0.15);
+        --text-primary: #e2e8f0;
+        --text-secondary: #94a3b8;
+        --accent: #38bdf8;
+        --accent-strong: #0ea5e9;
         --success: #22c55e;
         --warning: #f97316;
         --danger: #ef4444;
       }
 
-      @media (prefers-color-scheme: dark) {
+      @media (prefers-color-scheme: light) {
         :root {
-          --bg: #020617;
-          --card-bg: rgba(15, 23, 42, 0.9);
-          --text-primary: #e2e8f0;
-          --text-secondary: #94a3b8;
+          --bg: #f1f5f9;
+          --bg-elevated: rgba(255, 255, 255, 0.88);
+          --sidebar-bg: rgba(241, 245, 249, 0.95);
+          --divider: rgba(148, 163, 184, 0.2);
+          --text-primary: #0f172a;
+          --text-secondary: #475569;
+          --accent: #2563eb;
+          --accent-strong: #1d4ed8;
         }
       }
 
@@ -34,25 +40,127 @@
       body {
         margin: 0;
         font-family: "Inter", "WenQuanYi Micro Hei", "Microsoft YaHei", sans-serif;
-        background: linear-gradient(160deg, var(--bg) 0%, #1e293b 100%);
+        background: radial-gradient(circle at top, rgba(56, 189, 248, 0.12), transparent 55%),
+          radial-gradient(circle at bottom, rgba(14, 165, 233, 0.12), transparent 55%),
+          var(--bg);
         color: var(--text-primary);
         min-height: 100vh;
-        padding: 40px;
+      }
+
+      .app-shell {
+        display: grid;
+        grid-template-columns: 260px 1fr;
+        min-height: 100vh;
+        backdrop-filter: blur(18px);
+      }
+
+      .sidebar {
         display: flex;
         flex-direction: column;
+        padding: 28px 24px;
+        gap: 32px;
+        background: var(--sidebar-bg);
+        border-right: 1px solid var(--divider);
+      }
+
+      .brand {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .brand span {
+        letter-spacing: 0.24em;
+        font-size: 12px;
+        text-transform: uppercase;
+        color: var(--text-secondary);
+      }
+
+      .brand strong {
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--accent);
+      }
+
+      .menu {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .menu a {
+        text-decoration: none;
+        padding: 12px 16px;
+        border-radius: 12px;
+        color: var(--text-secondary);
+        font-size: 15px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        transition: background 0.2s ease, color 0.2s ease;
+      }
+
+      .menu a::before {
+        content: "";
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--divider);
+      }
+
+      .menu a.active,
+      .menu a:hover {
+        background: rgba(56, 189, 248, 0.15);
+        color: var(--accent);
+      }
+
+      .menu a.active::before,
+      .menu a:hover::before {
+        background: var(--accent);
+      }
+
+      .sidebar-footer {
+        margin-top: auto;
+        padding: 16px;
+        border-radius: 16px;
+        background: rgba(56, 189, 248, 0.12);
+        border: 1px solid rgba(56, 189, 248, 0.25);
+        font-size: 13px;
+        line-height: 1.5;
+        color: var(--text-secondary);
+      }
+
+      .main {
+        display: flex;
+        flex-direction: column;
+        background: var(--bg-elevated);
+      }
+
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 24px 36px;
+        border-bottom: 1px solid var(--divider);
         gap: 24px;
       }
 
-      header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-      }
-
-      h1 {
+      .topbar h1 {
         margin: 0;
         font-size: 28px;
         font-weight: 700;
+      }
+
+      .subtitle {
+        margin: 6px 0 0;
+        font-size: 14px;
+        color: var(--text-secondary);
+      }
+
+      .topbar-meta {
+        display: flex;
+        align-items: center;
+        gap: 16px;
       }
 
       .timestamp {
@@ -60,24 +168,51 @@
         color: var(--text-secondary);
       }
 
-      .grid {
+      .refresh-button {
+        padding: 10px 18px;
+        border-radius: 999px;
+        border: 1px solid rgba(56, 189, 248, 0.35);
+        background: rgba(56, 189, 248, 0.12);
+        color: var(--accent-strong);
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.15s ease, background 0.15s ease;
+      }
+
+      .refresh-button:hover {
+        background: rgba(56, 189, 248, 0.2);
+        transform: translateY(-1px);
+      }
+
+      .refresh-button:active {
+        transform: translateY(1px);
+      }
+
+      .content {
+        padding: 32px 36px 48px;
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+      }
+
+      .cards-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
         gap: 24px;
       }
 
       .card {
         backdrop-filter: blur(16px);
-        background: var(--card-bg);
-        border-radius: 16px;
+        background: rgba(15, 23, 42, 0.6);
+        border-radius: 18px;
         padding: 24px;
-        box-shadow: 0 20px 45px rgba(15, 23, 42, 0.25);
-        border: 1px solid rgba(148, 163, 184, 0.15);
+        box-shadow: 0 24px 48px rgba(2, 6, 23, 0.35);
+        border: 1px solid var(--divider);
       }
 
       .card h2 {
-        margin: 0 0 16px;
-        font-size: 18px;
+        margin: 0 0 18px;
+        font-size: 16px;
         color: var(--text-secondary);
         text-transform: uppercase;
         letter-spacing: 0.08em;
@@ -114,7 +249,7 @@
       .metric-bar {
         height: 8px;
         border-radius: 999px;
-        background: rgba(148, 163, 184, 0.25);
+        background: rgba(148, 163, 184, 0.18);
         overflow: hidden;
       }
 
@@ -122,7 +257,7 @@
         display: block;
         height: 100%;
         border-radius: 999px;
-        background: var(--accent);
+        background: linear-gradient(90deg, var(--accent) 0%, var(--accent-strong) 100%);
       }
 
       .events {
@@ -164,35 +299,97 @@
 
       .error {
         padding: 16px;
-        border-radius: 12px;
-        background: rgba(239, 68, 68, 0.15);
+        border-radius: 14px;
+        background: rgba(239, 68, 68, 0.18);
         color: var(--danger);
         font-weight: 600;
+        border: 1px solid rgba(239, 68, 68, 0.35);
+      }
+
+      @media (max-width: 960px) {
+        .app-shell {
+          grid-template-columns: 1fr;
+        }
+
+        .sidebar {
+          flex-direction: row;
+          align-items: center;
+          gap: 16px;
+          overflow-x: auto;
+        }
+
+        .sidebar-footer {
+          display: none;
+        }
+      }
+
+      @media (max-width: 720px) {
+        .topbar {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
+        .topbar-meta {
+          width: 100%;
+          justify-content: space-between;
+        }
+
+        .content {
+          padding: 24px;
+        }
       }
     </style>
   </head>
   <body>
-    <header>
-      <h1>集群概览</h1>
-      <span class="timestamp" id="last-updated">加载中...</span>
-    </header>
-
-    <div id="error" class="error" style="display: none;"></div>
-
-    <section class="grid">
-      <div class="card" id="cluster-info">
-        <h2>CLUSTER INFO</h2>
-        <ul class="info-list"></ul>
-      </div>
-      <div class="card" id="resource-usage">
-        <h2>RESOURCE USAGE</h2>
-        <div class="metrics"></div>
-      </div>
-      <div class="card" id="recent-events">
-        <h2>RECENT EVENTS</h2>
-        <div class="events"></div>
-      </div>
-    </section>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <span>kubernetes</span>
+          <strong>Cluster Studio</strong>
+        </div>
+        <nav class="menu">
+          <a class="active" href="#">集群概览</a>
+          <a href="#">命名空间</a>
+          <a href="#">节点管理</a>
+          <a href="#">Pod 监控</a>
+          <a href="#">部署与发布</a>
+          <a href="#">网络与服务</a>
+          <a href="#">日志事件</a>
+        </nav>
+        <div class="sidebar-footer">
+          🌟 小贴士：Mock 数据每 15 秒刷新一次，接入真实集群时可复用同一套 UI 结构。
+        </div>
+      </aside>
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <h1>集群概览</h1>
+            <p class="subtitle">实时掌握集群状态、资源使用与关键事件动态</p>
+          </div>
+          <div class="topbar-meta">
+            <span class="timestamp" id="last-updated">加载中...</span>
+            <button class="refresh-button" id="manual-refresh">手动刷新</button>
+          </div>
+        </header>
+        <div class="content">
+          <div id="error" class="error" style="display: none;"></div>
+          <section class="cards-grid">
+            <div class="card" id="cluster-info">
+              <h2>CLUSTER INFO</h2>
+              <ul class="info-list"></ul>
+            </div>
+            <div class="card" id="resource-usage">
+              <h2>RESOURCE USAGE</h2>
+              <div class="metrics"></div>
+            </div>
+            <div class="card" id="recent-events">
+              <h2>RECENT EVENTS</h2>
+              <div class="events"></div>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
 
     <script>
       async function fetchOverview() {
@@ -279,6 +476,7 @@
         }
       }
 
+      document.getElementById('manual-refresh').addEventListener('click', fetchOverview);
       fetchOverview();
       setInterval(fetchOverview, 15000);
     </script>
