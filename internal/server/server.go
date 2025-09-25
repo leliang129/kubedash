@@ -1,17 +1,18 @@
 package server
 
 import (
-	"encoding/json"
 	"net/http"
 	"time"
 
 	"k8s_dashboard/internal/cluster"
+	"k8s_dashboard/internal/namespace"
 )
 
 // Server exposes HTTP handlers for the dashboard application.
 type Server struct {
-	mux *http.ServeMux
-	now func() time.Time
+	mux        *http.ServeMux
+	now        func() time.Time
+	namespaces *namespace.Store
 }
 
 // New constructs a server with default dependencies.
@@ -22,8 +23,9 @@ func New() *Server {
 // NewWithClock allows injection of a deterministic time source for testing.
 func NewWithClock(now func() time.Time) *Server {
 	s := &Server{
-		mux: http.NewServeMux(),
-		now: now,
+		mux:        http.NewServeMux(),
+		now:        now,
+		namespaces: namespace.NewStore(now()),
 	}
 	s.registerRoutes()
 	return s
@@ -37,6 +39,8 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("/", s.handleIndex)
 	s.mux.HandleFunc("/api/cluster/overview", s.handleClusterOverview)
+	s.mux.HandleFunc("/api/namespaces", s.handleNamespaces)
+	s.mux.HandleFunc("/api/namespaces/", s.handleNamespaceByName)
 }
 
 func (s *Server) handleClusterOverview(w http.ResponseWriter, r *http.Request) {
@@ -47,9 +51,5 @@ func (s *Server) handleClusterOverview(w http.ResponseWriter, r *http.Request) {
 
 	overview := cluster.MockOverview(s.now())
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(overview); err != nil {
-		http.Error(w, "failed to encode response", http.StatusInternalServerError)
-		return
-	}
+	writeJSON(w, overview, http.StatusOK)
 }

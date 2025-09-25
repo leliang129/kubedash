@@ -195,6 +195,16 @@
         gap: 24px;
       }
 
+      .view {
+        display: none;
+        flex-direction: column;
+        gap: 24px;
+      }
+
+      .view.active {
+        display: flex;
+      }
+
       .cards-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -306,6 +316,93 @@
         border: 1px solid rgba(239, 68, 68, 0.35);
       }
 
+      .namespace-card {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+
+      .namespace-form {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+      }
+
+      .namespace-form input {
+        flex: 1 1 220px;
+        padding: 10px 14px;
+        border-radius: 12px;
+        border: 1px solid rgba(148, 163, 184, 0.35);
+        background: rgba(15, 23, 42, 0.35);
+        color: var(--text-primary);
+      }
+
+      .namespace-form button {
+        padding: 10px 18px;
+        border-radius: 12px;
+        border: none;
+        background: linear-gradient(90deg, var(--accent) 0%, var(--accent-strong) 100%);
+        color: #fff;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      .namespace-feedback {
+        padding: 12px 16px;
+        border-radius: 12px;
+        font-size: 14px;
+        display: none;
+      }
+
+      .namespace-feedback.success {
+        background: rgba(34, 197, 94, 0.15);
+        color: var(--success);
+        border: 1px solid rgba(34, 197, 94, 0.35);
+      }
+
+      .namespace-feedback.error {
+        background: rgba(239, 68, 68, 0.15);
+        color: var(--danger);
+        border: 1px solid rgba(239, 68, 68, 0.35);
+      }
+
+      .table-wrapper {
+        overflow-x: auto;
+      }
+
+      .namespace-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+        min-width: 640px;
+      }
+
+      .namespace-table thead {
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+
+      .namespace-table th,
+      .namespace-table td {
+        padding: 12px 16px;
+        border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+      }
+
+      .namespace-table tbody tr:hover {
+        background: rgba(56, 189, 248, 0.08);
+      }
+
+      .namespace-table button {
+        padding: 6px 12px;
+        border-radius: 10px;
+        border: 1px solid rgba(239, 68, 68, 0.35);
+        background: rgba(239, 68, 68, 0.12);
+        color: var(--danger);
+        cursor: pointer;
+      }
+
       @media (max-width: 960px) {
         .app-shell {
           grid-template-columns: 1fr;
@@ -348,8 +445,8 @@
           <strong>Cluster Studio</strong>
         </div>
         <nav class="menu">
-          <a class="active" href="#">集群概览</a>
-          <a href="#">命名空间</a>
+          <a class="active" data-view="overview" href="#">集群概览</a>
+          <a data-view="namespaces" href="#">命名空间</a>
           <a href="#">节点管理</a>
           <a href="#">Pod 监控</a>
           <a href="#">部署与发布</a>
@@ -363,8 +460,8 @@
       <main class="main">
         <header class="topbar">
           <div>
-            <h1>集群概览</h1>
-            <p class="subtitle">实时掌握集群状态、资源使用与关键事件动态</p>
+            <h1 id="view-title">集群概览</h1>
+            <p class="subtitle" id="view-subtitle">实时掌握集群状态、资源使用与关键事件动态</p>
           </div>
           <div class="topbar-meta">
             <span class="timestamp" id="last-updated">加载中...</span>
@@ -373,18 +470,58 @@
         </header>
         <div class="content">
           <div id="error" class="error" style="display: none;"></div>
-          <section class="cards-grid">
-            <div class="card" id="cluster-info">
-              <h2>CLUSTER INFO</h2>
-              <ul class="info-list"></ul>
+
+          <section class="view active" data-view="overview">
+            <div class="cards-grid">
+              <div class="card" id="cluster-info">
+                <h2>CLUSTER INFO</h2>
+                <ul class="info-list"></ul>
+              </div>
+              <div class="card" id="resource-usage">
+                <h2>RESOURCE USAGE</h2>
+                <div class="metrics"></div>
+              </div>
+              <div class="card" id="recent-events">
+                <h2>RECENT EVENTS</h2>
+                <div class="events"></div>
+              </div>
             </div>
-            <div class="card" id="resource-usage">
-              <h2>RESOURCE USAGE</h2>
-              <div class="metrics"></div>
-            </div>
-            <div class="card" id="recent-events">
-              <h2>RECENT EVENTS</h2>
-              <div class="events"></div>
+          </section>
+
+          <section class="view" data-view="namespaces">
+            <div class="card namespace-card">
+              <div>
+                <h2>NAMESPACE LIST</h2>
+                <p class="subtitle">集中管理命名空间，灵活隔离应用环境</p>
+              </div>
+              <form id="namespace-form" class="namespace-form">
+                <input
+                  id="namespace-name"
+                  name="name"
+                  type="text"
+                  placeholder="请输入命名空间名称，例如 staging"
+                  pattern="[a-z0-9]([-a-z0-9]*[a-z0-9])?"
+                  maxlength="63"
+                  required
+                />
+                <button type="submit">创建命名空间</button>
+              </form>
+              <div id="namespace-feedback" class="namespace-feedback"></div>
+              <div class="table-wrapper">
+                <table class="namespace-table" id="namespace-table">
+                  <thead>
+                    <tr>
+                      <th>名称</th>
+                      <th>状态</th>
+                      <th>存在时间</th>
+                      <th>创建时间</th>
+                      <th>标签</th>
+                      <th>操作</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
             </div>
           </section>
         </div>
@@ -392,6 +529,52 @@
     </div>
 
     <script>
+      const viewMeta = {
+        overview: {
+          title: '集群概览',
+          subtitle: '实时掌握集群状态、资源使用与关键事件动态'
+        },
+        namespaces: {
+          title: '命名空间管理',
+          subtitle: '创建、浏览和维护集群中的资源隔离边界'
+        }
+      };
+
+      const navLinks = document.querySelectorAll('.menu a[data-view]');
+      const views = document.querySelectorAll('.view');
+      let activeView = 'overview';
+
+      navLinks.forEach(link => {
+        link.addEventListener('click', event => {
+          event.preventDefault();
+          const view = link.dataset.view;
+          if (view) {
+            switchView(view);
+          }
+        });
+      });
+
+      function switchView(view) {
+        if (activeView === view) {
+          return;
+        }
+
+        navLinks.forEach(link => {
+          link.classList.toggle('active', link.dataset.view === view);
+        });
+
+        views.forEach(section => {
+          section.classList.toggle('active', section.dataset.view === view);
+        });
+
+        const meta = viewMeta[view] || viewMeta.overview;
+        document.getElementById('view-title').textContent = meta.title;
+        document.getElementById('view-subtitle').textContent = meta.subtitle;
+
+        activeView = view;
+        handleManualRefresh();
+      }
+
       async function fetchOverview() {
         try {
           const res = await fetch('/api/cluster/overview', { cache: 'no-store' });
@@ -400,11 +583,9 @@
           }
           const data = await res.json();
           renderOverview(data);
-          document.getElementById('error').style.display = 'none';
+          hideError();
         } catch (err) {
-          const errorBox = document.getElementById('error');
-          errorBox.textContent = `呀，获取概览失败啦：${err.message}`;
-          errorBox.style.display = 'block';
+          showError(`呀，获取概览失败啦：${err.message}`);
         }
       }
 
@@ -476,9 +657,136 @@
         }
       }
 
-      document.getElementById('manual-refresh').addEventListener('click', fetchOverview);
+      function showError(message) {
+        const errorBox = document.getElementById('error');
+        errorBox.textContent = message;
+        errorBox.style.display = 'block';
+      }
+
+      function hideError() {
+        const errorBox = document.getElementById('error');
+        errorBox.style.display = 'none';
+      }
+
+      async function fetchNamespaces() {
+        try {
+          const res = await fetch('/api/namespaces', { cache: 'no-store' });
+          if (!res.ok) {
+            throw new Error(`请求失败: ${res.status}`);
+          }
+          const data = await res.json();
+          renderNamespaces(data);
+          showNamespaceFeedback('命名空间列表已刷新', true);
+        } catch (err) {
+          showNamespaceFeedback(`命名空间列表获取失败：${err.message}`, false);
+        }
+      }
+
+      function renderNamespaces(namespaces) {
+        const tbody = document.querySelector('#namespace-table tbody');
+        tbody.innerHTML = '';
+
+        if (!namespaces || namespaces.length === 0) {
+          const row = document.createElement('tr');
+          row.innerHTML = '<td colspan="6">目前还没有命名空间记录</td>';
+          tbody.appendChild(row);
+          return;
+        }
+
+        namespaces.forEach(ns => {
+          const row = document.createElement('tr');
+          const labels = ns.labels ? Object.entries(ns.labels).map(([k, v]) => `${k}=${v}`).join('<br />') : '-';
+          row.innerHTML = `
+            <td>${ns.name}</td>
+            <td>${ns.status}</td>
+            <td>${ns.age}</td>
+            <td>${new Date(ns.createdAt).toLocaleString()}</td>
+            <td>${labels}</td>
+            <td><button type="button" data-action="delete" data-name="${ns.name}">删除</button></td>
+          `;
+          tbody.appendChild(row);
+        });
+
+        tbody.querySelectorAll('button[data-action="delete"]').forEach(btn => {
+          btn.addEventListener('click', () => deleteNamespace(btn.dataset.name));
+        });
+      }
+
+      async function deleteNamespace(name) {
+        if (!name) {
+          return;
+        }
+
+        try {
+          const res = await fetch(`/api/namespaces/${encodeURIComponent(name)}`, {
+            method: 'DELETE'
+          });
+          if (res.status === 204) {
+            showNamespaceFeedback(`命名空间 ${name} 已删除`, true);
+            fetchNamespaces();
+          } else if (res.status === 404) {
+            showNamespaceFeedback(`命名空间 ${name} 不存在`, false);
+          } else {
+            throw new Error(`状态码 ${res.status}`);
+          }
+        } catch (err) {
+          showNamespaceFeedback(`删除命名空间失败：${err.message}`, false);
+        }
+      }
+
+      const namespaceForm = document.getElementById('namespace-form');
+      namespaceForm.addEventListener('submit', async event => {
+        event.preventDefault();
+        const formData = new FormData(namespaceForm);
+        const name = formData.get('name');
+        const payload = { name };
+
+        try {
+          const res = await fetch('/api/namespaces', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+
+          if (res.status === 201) {
+            namespaceForm.reset();
+            showNamespaceFeedback(`命名空间 ${name} 创建成功`, true);
+            fetchNamespaces();
+          } else {
+            const data = await res.json().catch(() => null);
+            const message = data && data.error ? data.error : `请求失败：${res.status}`;
+            showNamespaceFeedback(message, false);
+          }
+        } catch (err) {
+          showNamespaceFeedback(`创建命名空间失败：${err.message}`, false);
+        }
+      });
+
+      function showNamespaceFeedback(message, success) {
+        const box = document.getElementById('namespace-feedback');
+        box.textContent = message;
+        box.classList.remove('success', 'error');
+        box.classList.add(success ? 'success' : 'error');
+        box.style.display = 'block';
+      }
+
+      function handleManualRefresh() {
+        if (activeView === 'overview') {
+          fetchOverview();
+        } else if (activeView === 'namespaces') {
+          fetchNamespaces();
+        }
+      }
+
+      document.getElementById('manual-refresh').addEventListener('click', handleManualRefresh);
+
+      // 初始加载
       fetchOverview();
-      setInterval(fetchOverview, 15000);
+      fetchNamespaces();
+
+      setInterval(() => {
+        handleManualRefresh();
+      }, 15000);
     </script>
   </body>
 </html>
