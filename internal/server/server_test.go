@@ -3,6 +3,8 @@ package server
 import (
 	"bytes"
 	"encoding/json"
+	"io"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -234,6 +236,178 @@ func TestHandlePodsEndpoints(t *testing.T) {
 
 	if notFoundRR.Code != http.StatusNotFound {
 		t.Fatalf("expected 404, got %d", notFoundRR.Code)
+	}
+}
+
+func TestHandleServicesEndpoints(t *testing.T) {
+	fixedTime := time.Date(2024, 7, 12, 15, 30, 0, 0, time.UTC)
+	srv := NewWithClock(func() time.Time {
+		return fixedTime
+	})
+
+	listReq := httptest.NewRequest(http.MethodGet, "/api/services", nil)
+	listRR := httptest.NewRecorder()
+	srv.ServeHTTP(listRR, listReq)
+
+	if listRR.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", listRR.Code)
+	}
+
+	var services []map[string]any
+	if err := json.NewDecoder(listRR.Body).Decode(&services); err != nil {
+		t.Fatalf("decode services list: %v", err)
+	}
+
+	if len(services) == 0 {
+		t.Fatalf("expected services in list")
+	}
+
+	detailReq := httptest.NewRequest(http.MethodGet, "/api/services/frontend", nil)
+	detailRR := httptest.NewRecorder()
+	srv.ServeHTTP(detailRR, detailReq)
+
+	if detailRR.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", detailRR.Code)
+	}
+
+	var detail map[string]any
+	if err := json.NewDecoder(detailRR.Body).Decode(&detail); err != nil {
+		t.Fatalf("decode service detail: %v", err)
+	}
+
+	if detail["name"] != "frontend" {
+		t.Fatalf("expected frontend detail, got %v", detail["name"])
+	}
+
+	notFoundReq := httptest.NewRequest(http.MethodGet, "/api/services/ghost", nil)
+	notFoundRR := httptest.NewRecorder()
+	srv.ServeHTTP(notFoundRR, notFoundReq)
+
+	if notFoundRR.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d", notFoundRR.Code)
+	}
+}
+
+func TestHandleLogsAndEvents(t *testing.T) {
+	fixedTime := time.Date(2024, 7, 12, 15, 30, 0, 0, time.UTC)
+	srv := NewWithClock(func() time.Time {
+		return fixedTime
+	})
+
+	metaReq := httptest.NewRequest(http.MethodGet, "/api/logs/meta", nil)
+	metaRR := httptest.NewRecorder()
+	srv.ServeHTTP(metaRR, metaReq)
+
+	if metaRR.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", metaRR.Code)
+	}
+
+	var meta map[string]any
+	if err := json.NewDecoder(metaRR.Body).Decode(&meta); err != nil {
+		t.Fatalf("decode meta response: %v", err)
+	}
+
+	if _, ok := meta["namespaces"]; !ok {
+		t.Fatalf("expected namespaces in meta response")
+	}
+
+	logReq := httptest.NewRequest(http.MethodGet, "/api/logs/stream?namespace=prod&level=ERROR&limit=5", nil)
+	logRR := httptest.NewRecorder()
+	srv.ServeHTTP(logRR, logReq)
+
+	if logRR.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", logRR.Code)
+	}
+
+	var logsPayload []map[string]any
+	if err := json.NewDecoder(logRR.Body).Decode(&logsPayload); err != nil {
+		t.Fatalf("decode logs response: %v", err)
+	}
+
+	if len(logsPayload) == 0 {
+		t.Fatalf("expected filtered logs")
+	}
+
+	eventsReq := httptest.NewRequest(http.MethodGet, "/api/events", nil)
+	eventsRR := httptest.NewRecorder()
+	srv.ServeHTTP(eventsRR, eventsReq)
+
+	if eventsRR.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", eventsRR.Code)
+	}
+
+	var events []map[string]any
+	if err := json.NewDecoder(eventsRR.Body).Decode(&events); err != nil {
+		t.Fatalf("decode events response: %v", err)
+	}
+
+	if len(events) == 0 {
+		t.Fatalf("expected events from API")
+	}
+}
+
+func TestHandleClusterImport(t *testing.T) {
+	const kubeconfigYAML = `apiVersion: v1
+clusters:
+- name: test
+  cluster:
+    server: https://example.test
+contexts:
+- name: test-context
+  context:
+    cluster: test
+    user: test-user
+current-context: test-context
+`
+
+	fixedTime := time.Date(2024, 7, 12, 15, 30, 0, 0, time.UTC)
+	srv := NewWithClock(func() time.Time { return fixedTime })
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile("file", "config.yaml")
+	if err != nil {
+		t.Fatalf("create form file: %v", err)
+	}
+	if _, err := io.WriteString(part, kubeconfigYAML); err != nil {
+		t.Fatalf("write kubeconfig: %v", err)
+	}
+	writer.Close()
+
+	req := httptest.NewRequest(http.MethodPost, "/api/cluster/import", body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	rr := httptest.NewRecorder()
+
+	srv.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d", rr.Code)
+	}
+
+	var summary map[string]any
+	if err := json.NewDecoder(rr.Body).Decode(&summary); err != nil {
+		t.Fatalf("decode summary: %v", err)
+	}
+
+	if summary["name"].(string) == "" {
+		t.Fatalf("expected summary name")
+	}
+
+	listReq := httptest.NewRequest(http.MethodGet, "/api/cluster/imports", nil)
+	listRR := httptest.NewRecorder()
+	srv.ServeHTTP(listRR, listReq)
+
+	if listRR.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", listRR.Code)
+	}
+
+	var imports []map[string]any
+	if err := json.NewDecoder(listRR.Body).Decode(&imports); err != nil {
+		t.Fatalf("decode imports: %v", err)
+	}
+
+	if len(imports) != 1 {
+		t.Fatalf("expected 1 import, got %d", len(imports))
 	}
 }
 

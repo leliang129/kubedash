@@ -6,9 +6,12 @@ import (
 
 	"k8s_dashboard/internal/cluster"
 	"k8s_dashboard/internal/deploy"
+	"k8s_dashboard/internal/kubeconfig"
+	"k8s_dashboard/internal/logs"
 	"k8s_dashboard/internal/namespace"
 	"k8s_dashboard/internal/node"
 	"k8s_dashboard/internal/pod"
+	"k8s_dashboard/internal/service"
 )
 
 // Server exposes HTTP handlers for the dashboard application.
@@ -19,6 +22,9 @@ type Server struct {
 	nodes       *node.Store
 	pods        *pod.Store
 	deployments *deploy.Store
+	services    *service.Store
+	logs        *logs.Store
+	kubeconfigs *kubeconfig.Store
 }
 
 // New constructs a server with default dependencies.
@@ -35,6 +41,9 @@ func NewWithClock(now func() time.Time) *Server {
 		nodes:       node.NewStore(now()),
 		pods:        pod.NewStore(now()),
 		deployments: deploy.NewStore(now()),
+		services:    service.NewStore(now()),
+		logs:        logs.NewStore(now()),
+		kubeconfigs: kubeconfig.NewStore(),
 	}
 	s.registerRoutes()
 	return s
@@ -56,6 +65,13 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("/api/pods/", s.handlePodByName)
 	s.mux.HandleFunc("/api/deployments", s.handleDeployments)
 	s.mux.HandleFunc("/api/deployments/", s.handleDeploymentByName)
+	s.mux.HandleFunc("/api/services", s.handleServices)
+	s.mux.HandleFunc("/api/services/", s.handleServiceByName)
+	s.mux.HandleFunc("/api/logs/stream", s.handleLogStream)
+	s.mux.HandleFunc("/api/logs/meta", s.handleLogMeta)
+	s.mux.HandleFunc("/api/events", s.handleEvents)
+	s.mux.HandleFunc("/api/cluster/import", s.handleClusterImport)
+	s.mux.HandleFunc("/api/cluster/imports", s.handleClusterImports)
 }
 
 func (s *Server) handleClusterOverview(w http.ResponseWriter, r *http.Request) {

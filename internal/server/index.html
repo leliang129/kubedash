@@ -4,12 +4,61 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Kubernetes Dashboard</title>
+    <script>
+      (function () {
+        const storageKey = 'dashboard-theme';
+        let theme;
+        try {
+          const stored = window.localStorage.getItem(storageKey);
+          if (stored === 'light' || stored === 'dark') {
+            theme = stored;
+          }
+        } catch (err) {
+          theme = undefined;
+        }
+
+        if (!theme) {
+          const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+          theme = prefersDark ? 'dark' : 'light';
+        }
+
+        document.documentElement.setAttribute('data-theme', theme);
+      })();
+    </script>
     <style>
       :root {
-        color-scheme: light dark;
+        color-scheme: light;
+        --bg: #f4f6fb;
+        --bg-elevated: rgba(255, 255, 255, 0.86);
+        --sidebar-bg: rgba(255, 255, 255, 0.78);
+        --overlay-top: rgba(37, 99, 235, 0.08);
+        --overlay-bottom: rgba(125, 211, 252, 0.08);
+        --divider: rgba(148, 163, 184, 0.18);
+        --text-primary: #0f172a;
+        --text-secondary: #475569;
+        --accent: #2563eb;
+        --accent-strong: #1d4ed8;
+        --success: #16a34a;
+        --warning: #f97316;
+        --danger: #dc2626;
+        --card-bg: rgba(255, 255, 255, 0.92);
+        --card-border: rgba(148, 163, 184, 0.18);
+        --card-shadow: 0 20px 45px rgba(15, 23, 42, 0.08);
+        --muted-surface: rgba(148, 163, 184, 0.12);
+        --input-bg: rgba(255, 255, 255, 0.9);
+        --input-border: rgba(148, 163, 184, 0.35);
+        --table-hover: rgba(37, 99, 235, 0.08);
+        --table-active: rgba(37, 99, 235, 0.16);
+        --log-panel-bg: rgba(15, 23, 42, 0.05);
+      }
+
+      :root[data-theme='dark'] {
+        color-scheme: dark;
         --bg: #020617;
-        --bg-elevated: rgba(15, 23, 42, 0.85);
-        --sidebar-bg: rgba(2, 6, 23, 0.85);
+        --bg-elevated: rgba(15, 23, 42, 0.88);
+        --sidebar-bg: rgba(2, 6, 23, 0.9);
+        --overlay-top: rgba(56, 189, 248, 0.12);
+        --overlay-bottom: rgba(14, 165, 233, 0.12);
         --divider: rgba(148, 163, 184, 0.15);
         --text-primary: #e2e8f0;
         --text-secondary: #94a3b8;
@@ -18,19 +67,15 @@
         --success: #22c55e;
         --warning: #f97316;
         --danger: #ef4444;
-      }
-
-      @media (prefers-color-scheme: light) {
-        :root {
-          --bg: #f1f5f9;
-          --bg-elevated: rgba(255, 255, 255, 0.88);
-          --sidebar-bg: rgba(241, 245, 249, 0.95);
-          --divider: rgba(148, 163, 184, 0.2);
-          --text-primary: #0f172a;
-          --text-secondary: #475569;
-          --accent: #2563eb;
-          --accent-strong: #1d4ed8;
-        }
+        --card-bg: rgba(15, 23, 42, 0.6);
+        --card-border: rgba(148, 163, 184, 0.18);
+        --card-shadow: 0 24px 48px rgba(2, 6, 23, 0.35);
+        --muted-surface: rgba(148, 163, 184, 0.12);
+        --input-bg: rgba(15, 23, 42, 0.35);
+        --input-border: rgba(148, 163, 184, 0.35);
+        --table-hover: rgba(56, 189, 248, 0.12);
+        --table-active: rgba(56, 189, 248, 0.18);
+        --log-panel-bg: rgba(15, 23, 42, 0.35);
       }
 
       * {
@@ -40,8 +85,8 @@
       body {
         margin: 0;
         font-family: "Inter", "WenQuanYi Micro Hei", "Microsoft YaHei", sans-serif;
-        background: radial-gradient(circle at top, rgba(56, 189, 248, 0.12), transparent 55%),
-          radial-gradient(circle at bottom, rgba(14, 165, 233, 0.12), transparent 55%),
+        background: radial-gradient(circle at top, var(--overlay-top), transparent 55%),
+          radial-gradient(circle at bottom, var(--overlay-bottom), transparent 55%),
           var(--bg);
         color: var(--text-primary);
         min-height: 100vh;
@@ -163,6 +208,12 @@
         gap: 16px;
       }
 
+      .topbar-actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
       .timestamp {
         font-size: 14px;
         color: var(--text-secondary);
@@ -177,6 +228,39 @@
         font-weight: 600;
         cursor: pointer;
         transition: transform 0.15s ease, background 0.15s ease;
+      }
+
+      .theme-toggle {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 16px;
+        border-radius: 999px;
+        border: 1px solid var(--divider);
+        background: var(--card-bg);
+        color: var(--text-secondary);
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.15s ease, background 0.15s ease, color 0.15s ease;
+      }
+
+      .theme-toggle:hover {
+        background: var(--table-hover);
+        color: var(--accent);
+        transform: translateY(-1px);
+      }
+
+      .theme-toggle:active {
+        transform: translateY(1px);
+      }
+
+      .theme-icon {
+        font-size: 18px;
+      }
+
+      .theme-label {
+        font-size: 13px;
+        color: var(--text-secondary);
       }
 
       .refresh-button:hover {
@@ -213,11 +297,11 @@
 
       .card {
         backdrop-filter: blur(16px);
-        background: rgba(15, 23, 42, 0.6);
+        background: var(--card-bg);
         border-radius: 18px;
         padding: 24px;
-        box-shadow: 0 24px 48px rgba(2, 6, 23, 0.35);
-        border: 1px solid var(--divider);
+        box-shadow: var(--card-shadow);
+        border: 1px solid var(--card-border);
       }
 
       .card h2 {
@@ -242,7 +326,7 @@
         align-items: center;
         padding: 12px 16px;
         border-radius: 12px;
-        background: rgba(148, 163, 184, 0.12);
+        background: var(--muted-surface);
       }
 
       .metric {
@@ -259,7 +343,7 @@
       .metric-bar {
         height: 8px;
         border-radius: 999px;
-        background: rgba(148, 163, 184, 0.18);
+        background: var(--muted-surface);
         overflow: hidden;
       }
 
@@ -278,7 +362,7 @@
       .event {
         padding: 16px;
         border-radius: 12px;
-        background: rgba(148, 163, 184, 0.12);
+        background: var(--muted-surface);
         border-left: 4px solid transparent;
       }
 
@@ -358,8 +442,8 @@
         flex: 1 1 220px;
         padding: 10px 14px;
         border-radius: 12px;
-        border: 1px solid rgba(148, 163, 184, 0.35);
-        background: rgba(15, 23, 42, 0.35);
+        border: 1px solid var(--input-border);
+        background: var(--input-bg);
         color: var(--text-primary);
       }
 
@@ -373,6 +457,37 @@
         cursor: pointer;
       }
 
+      .table-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin: 8px 0 12px;
+      }
+
+      .table-toolbar .table-hint {
+        color: var(--text-secondary);
+        font-size: 13px;
+      }
+
+      .search-input {
+        flex: 1 1 220px;
+        min-width: 200px;
+        padding: 8px 14px;
+        border-radius: 12px;
+        border: 1px solid var(--input-border);
+        background: var(--input-bg);
+        color: var(--text-primary);
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      }
+
+      .search-input:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+      }
+
       .deploy-form {
         display: flex;
         flex-wrap: wrap;
@@ -384,8 +499,8 @@
         width: 120px;
         padding: 10px 14px;
         border-radius: 12px;
-        border: 1px solid rgba(148, 163, 184, 0.35);
-        background: rgba(15, 23, 42, 0.35);
+        border: 1px solid var(--input-border);
+        background: var(--input-bg);
         color: var(--text-primary);
       }
 
@@ -401,6 +516,11 @@
 
       .table-wrapper {
         overflow-x: auto;
+      }
+
+      .log-table-wrapper {
+        max-height: 360px;
+        overflow-y: auto;
       }
 
       table {
@@ -428,7 +548,7 @@
       }
 
       tbody tr:hover {
-        background: rgba(56, 189, 248, 0.08);
+        background: var(--table-hover);
       }
 
       .namespace-table button,
@@ -459,12 +579,24 @@
       }
 
       .node-table tbody tr.active {
-        background: rgba(56, 189, 248, 0.18);
+        background: var(--table-active);
       }
 
       .pods-grid {
         display: grid;
         grid-template-columns: 2fr 1fr;
+        gap: 24px;
+      }
+
+      .services-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 24px;
+      }
+
+      .logs-grid {
+        display: grid;
+        grid-template-columns: 1.6fr 1fr;
         gap: 24px;
       }
 
@@ -474,7 +606,7 @@
       }
 
       .deploy-table tbody tr.active {
-        background: rgba(56, 189, 248, 0.18);
+        background: var(--table-active);
       }
 
       .pod-table tbody tr {
@@ -483,7 +615,250 @@
       }
 
       .pod-table tbody tr.active {
-        background: rgba(56, 189, 248, 0.18);
+        background: var(--table-active);
+      }
+
+      .service-table tbody tr {
+        cursor: pointer;
+        transition: background 0.2s ease;
+      }
+
+      .service-table tbody tr.active {
+        background: var(--table-active);
+      }
+
+      .filter-bar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+      }
+
+      .filter-bar select,
+      .filter-bar label {
+        font-size: 14px;
+        color: var(--text-secondary);
+      }
+
+      .filter-select {
+        padding: 8px 14px;
+        border-radius: 12px;
+        border: 1px solid var(--input-border);
+        background: var(--input-bg);
+        color: var(--text-primary);
+        min-width: 150px;
+      }
+
+      .filter-select:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+      }
+
+      .auto-scroll-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 999px;
+        background: var(--muted-surface);
+        color: var(--text-secondary);
+        font-size: 13px;
+      }
+
+      .auto-scroll-toggle input {
+        accent-color: var(--accent);
+      }
+
+      .view-events-button,
+      .import-button {
+        padding: 10px 18px;
+        border-radius: 999px;
+        border: 1px solid var(--accent);
+        background: rgba(37, 99, 235, 0.12);
+        color: var(--accent-strong);
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.15s ease, background 0.15s ease;
+      }
+
+      .view-events-button:hover,
+      .import-button:hover {
+        background: rgba(37, 99, 235, 0.2);
+        transform: translateY(-1px);
+      }
+
+      .view-events-button:active,
+      .import-button:active {
+        transform: translateY(1px);
+      }
+
+      .view-events-button:disabled,
+      .import-button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      #kubeconfig-input {
+        display: none;
+      }
+
+      .import-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+        margin-bottom: 12px;
+      }
+
+      .import-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: grid;
+        gap: 8px;
+      }
+
+      .import-list li {
+        background: var(--muted-surface);
+        border-radius: 12px;
+        padding: 12px 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .import-list small {
+        color: var(--text-secondary);
+      }
+
+      .modal {
+        position: fixed;
+        inset: 0;
+        background: rgba(2, 6, 23, 0.65);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        z-index: 1000;
+        backdrop-filter: blur(6px);
+      }
+
+      .modal.show {
+        display: flex;
+      }
+
+      .modal-body {
+        background: var(--card-bg);
+        border-radius: 18px;
+        border: 1px solid var(--card-border);
+        box-shadow: var(--card-shadow);
+        max-width: 640px;
+        width: 100%;
+        max-height: 80vh;
+        overflow-y: auto;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .modal-close {
+        border: none;
+        background: rgba(148, 163, 184, 0.18);
+        color: var(--text-secondary);
+        padding: 8px 14px;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: background 0.15s ease;
+      }
+
+      .modal-close:hover {
+        background: rgba(148, 163, 184, 0.28);
+      }
+
+      body.modal-open {
+        overflow: hidden;
+      }
+
+      .log-table tbody tr {
+        transition: background 0.2s ease;
+      }
+
+      .log-table tbody tr:hover {
+        background: var(--table-hover);
+      }
+
+      .log-level-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+      }
+
+      .log-level-info {
+        background: rgba(37, 99, 235, 0.12);
+        color: var(--accent-strong);
+      }
+
+      .log-level-warn {
+        background: rgba(245, 158, 11, 0.18);
+        color: #b45309;
+      }
+
+      .log-level-error {
+        background: rgba(220, 38, 38, 0.18);
+        color: var(--danger);
+      }
+
+      .event-timeline {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: grid;
+        gap: 12px;
+      }
+
+      .event-timeline li {
+        background: var(--muted-surface);
+        border-radius: 12px;
+        padding: 14px 16px;
+        display: grid;
+        gap: 6px;
+        border-left: 4px solid transparent;
+      }
+
+      .event-timeline li.warning {
+        border-left-color: var(--warning);
+      }
+
+      .event-timeline li.normal {
+        border-left-color: var(--success);
+      }
+
+      .event-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        font-size: 13px;
+        color: var(--text-secondary);
+      }
+
+      .event-meta span {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
       }
 
       .badge {
@@ -511,9 +886,29 @@
         color: var(--text-secondary);
       }
 
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: rgba(56, 189, 248, 0.12);
+        border: 1px solid rgba(56, 189, 248, 0.25);
+        font-size: 12px;
+        color: var(--accent);
+        margin-right: 8px;
+        margin-bottom: 6px;
+      }
+
+      .chip-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
       .node-detail h3,
       .deploy-detail h3,
-      .pod-detail h3 {
+      .pod-detail h3,
+      .service-detail h3 {
         margin: 0;
         font-size: 20px;
       }
@@ -573,7 +968,7 @@
       }
 
       .log-panel {
-        background: rgba(15, 23, 42, 0.35);
+        background: var(--log-panel-bg);
         border-radius: 12px;
         padding: 12px 14px;
         max-height: 220px;
@@ -586,7 +981,9 @@
       @media (max-width: 1200px) {
         .nodes-grid,
         .deploys-grid,
-        .pods-grid {
+        .pods-grid,
+        .services-grid,
+        .logs-grid {
           grid-template-columns: 1fr;
         }
       }
@@ -637,9 +1034,9 @@
           <a data-view="namespaces" href="#">命名空间</a>
           <a data-view="nodes" href="#">节点管理</a>
           <a data-view="deployments" href="#">部署与发布</a>
+          <a data-view="services" href="#">服务管理</a>
           <a data-view="pods" href="#">Pod 管理</a>
-          <a href="#">网络与服务</a>
-          <a href="#">日志事件</a>
+          <a data-view="logs" href="#">日志事件</a>
         </nav>
         <div class="sidebar-footer">
           🌟 小贴士：Mock 数据每 15 秒刷新一次，接入真实集群时可复用同一套 UI 结构。
@@ -653,7 +1050,13 @@
           </div>
           <div class="topbar-meta">
             <span class="timestamp" id="last-updated">加载中...</span>
-            <button class="refresh-button" id="manual-refresh">手动刷新</button>
+            <div class="topbar-actions">
+              <button type="button" class="theme-toggle" id="theme-toggle">
+                <span class="theme-icon" aria-hidden="true">🌙</span>
+                <span class="theme-label" id="theme-label">星夜模式</span>
+              </button>
+              <button type="button" class="refresh-button" id="manual-refresh">手动刷新</button>
+            </div>
           </div>
         </header>
         <div class="content">
@@ -673,6 +1076,21 @@
                 <h2>RECENT EVENTS</h2>
                 <div class="events"></div>
               </div>
+              <div class="card" id="cluster-import">
+                <h2>CLUSTER IMPORT</h2>
+                <p class="subtitle">导入 kubeconfig 文件以快速接入集群</p>
+                <div class="import-actions">
+                  <input id="kubeconfig-input" type="file" accept=".yaml,.yml,.json,.conf" />
+                  <button type="button" class="import-button" id="kubeconfig-trigger">导入 kubeconfig</button>
+                </div>
+                <div id="kubeconfig-feedback" class="feedback-box"></div>
+                <ul class="import-list" id="import-list">
+                  <li>
+                    <strong>尚未导入集群</strong>
+                    <small>上传 kubeconfig 文件后，这里会展示解析结果</small>
+                  </li>
+                </ul>
+              </div>
             </div>
           </section>
 
@@ -681,6 +1099,10 @@
               <div>
                 <h2>NAMESPACE LIST</h2>
                 <p class="subtitle">集中管理命名空间，灵活隔离应用环境</p>
+              </div>
+              <div class="table-toolbar">
+                <span class="table-hint" id="namespace-count" data-default="支持按名称、状态或标签筛选命名空间">支持按名称、状态或标签筛选命名空间</span>
+                <input type="search" id="namespace-search" class="search-input" placeholder="搜索命名空间..." />
               </div>
               <form id="namespace-form" class="namespace-form">
                 <input
@@ -720,6 +1142,10 @@
                   <h2>NODE LIST</h2>
                   <p class="subtitle">观察节点的资源利用率与运行状况</p>
                 </div>
+                <div class="table-toolbar">
+                  <span class="table-hint" id="node-count" data-default="按名称、角色或状态快速查找节点">按名称、角色或状态快速查找节点</span>
+                  <input type="search" id="node-search" class="search-input" placeholder="搜索节点..." />
+                </div>
                 <div id="nodes-feedback" class="feedback-box"></div>
                 <div class="table-wrapper">
                   <table class="node-table" id="node-table">
@@ -756,6 +1182,10 @@
                   <h2>DEPLOYMENT LIST</h2>
                   <p class="subtitle">跟踪部署版本，掌握副本健康情况</p>
                 </div>
+                <div class="table-toolbar">
+                  <span class="table-hint" id="deployment-count" data-default="按名称、命名空间或状态筛选 Deployment">按名称、命名空间或状态筛选 Deployment</span>
+                  <input type="search" id="deployment-search" class="search-input" placeholder="搜索 Deployment..." />
+                </div>
                 <div id="deployments-feedback" class="feedback-box"></div>
                 <div class="table-wrapper">
                   <table class="deploy-table" id="deploy-table">
@@ -787,12 +1217,58 @@
             </div>
           </section>
 
+          <section class="view" data-view="services">
+            <div class="services-grid">
+              <div class="card service-card">
+                <div>
+                  <h2>SERVICE LIST</h2>
+                  <p class="subtitle">掌握服务入口、端口映射与核心 Pod</p>
+                </div>
+                <div class="table-toolbar">
+                  <span class="table-hint" id="service-count" data-default="按名称、命名空间或类型快速定位 Service">按名称、命名空间或类型快速定位 Service</span>
+                  <input type="search" id="service-search" class="search-input" placeholder="搜索 Service..." />
+                </div>
+                <div id="services-feedback" class="feedback-box"></div>
+                <div class="table-wrapper">
+                  <table class="service-table" id="service-table">
+                    <thead>
+                      <tr>
+                        <th>名称</th>
+                        <th>命名空间</th>
+                        <th>类型</th>
+                        <th>Cluster IP</th>
+                        <th>外部 IP</th>
+                        <th>端口</th>
+                        <th>存在时间</th>
+                        <th>状态</th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
+              <div class="card service-detail" id="service-detail">
+                <div>
+                  <h2>SERVICE DETAIL</h2>
+                  <p class="subtitle">选择左侧 Service 查看端口与关联对象</p>
+                </div>
+                <div id="service-detail-content">
+                  <p class="subtitle">暂未选择 Service</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
           <section class="view" data-view="pods">
             <div class="pods-grid">
               <div class="card pod-card">
                 <div>
                   <h2>POD LIST</h2>
                   <p class="subtitle">查看各命名空间的 Pod 状态与调度信息</p>
+                </div>
+                <div class="table-toolbar">
+                  <span class="table-hint" id="pod-count" data-default="按名称、命名空间或节点过滤 Pod">按名称、命名空间或节点过滤 Pod</span>
+                  <input type="search" id="pod-search" class="search-input" placeholder="搜索 Pod..." />
                 </div>
                 <div id="pods-feedback" class="feedback-box"></div>
                 <div class="table-wrapper">
@@ -823,8 +1299,67 @@
               </div>
             </div>
           </section>
+
+          <section class="view" data-view="logs">
+            <div class="logs-grid">
+              <div class="card log-card">
+                <div>
+                  <h2>LIVE LOG STREAM</h2>
+                  <p class="subtitle">实时洞察 Pod 日志输出，支持按维度筛选</p>
+                </div>
+                <div class="filter-bar">
+                  <select class="filter-select" id="log-namespace-filter">
+                    <option value="">全部命名空间</option>
+                  </select>
+                  <select class="filter-select" id="log-pod-filter">
+                    <option value="">全部 Pod</option>
+                  </select>
+                  <select class="filter-select" id="log-level-filter">
+                    <option value="">全部级别</option>
+                  </select>
+                  <label class="auto-scroll-toggle">
+                    <input type="checkbox" id="log-autoscroll" checked />
+                    自动滚动
+                  </label>
+                </div>
+                <div id="logs-feedback" class="feedback-box"></div>
+                <div class="table-wrapper log-table-wrapper">
+                  <table class="log-table" id="log-table">
+                    <thead>
+                      <tr>
+                        <th>时间</th>
+                        <th>命名空间</th>
+                        <th>Pod</th>
+                        <th>级别</th>
+                        <th>消息</th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
+              <div class="card events-card">
+                <div>
+                  <h2>EVENT STREAM</h2>
+                  <p class="subtitle">查看最新事件与原因，快速锁定异常信号</p>
+                </div>
+                <div id="events-feedback" class="feedback-box"></div>
+                <button type="button" class="view-events-button" id="events-launch-button">查看事件</button>
+              </div>
+            </div>
+          </section>
         </div>
       </main>
+    </div>
+
+    <div class="modal" id="events-modal" role="dialog" aria-modal="true" hidden>
+      <div class="modal-body">
+        <div class="modal-header">
+          <h2 id="events-modal-title">事件列表</h2>
+          <button type="button" class="modal-close" id="events-modal-close">关闭</button>
+        </div>
+        <ul class="event-timeline" id="events-modal-list"></ul>
+      </div>
     </div>
 
     <script>
@@ -845,9 +1380,17 @@
           title: '部署与发布',
           subtitle: '监控 Deployment 副本状态并快速模拟扩缩容'
         },
+        services: {
+          title: '服务管理',
+          subtitle: '掌握 Service 暴露方式与关联工作负载'
+        },
         pods: {
           title: 'Pod 管理',
           subtitle: '排查容器状态、查看日志与调度事件'
+        },
+        logs: {
+          title: '日志与事件',
+          subtitle: '聚合实时日志与事件流，洞察集群动态'
         }
       };
 
@@ -855,12 +1398,26 @@
       const views = document.querySelectorAll('.view');
       let activeView = 'overview';
 
+      const themeToggleButton = document.getElementById('theme-toggle');
+      const themeStorageKey = 'dashboard-theme';
+      const themeIconSpan = themeToggleButton ? themeToggleButton.querySelector('.theme-icon') : null;
+      const themeLabelSpan = document.getElementById('theme-label');
+
+      let namespacesCache = [];
       let nodesCache = [];
       let activeNode = null;
       let deploymentsCache = [];
       let activeDeployment = null;
+      let servicesCache = [];
+      let activeService = null;
       let podsCache = [];
       let activePod = null;
+      let logsCache = [];
+      let eventsCache = [];
+      let logMetaCache = { namespaces: [], pods: [], levels: [] };
+      let logAutoScroll = true;
+      let kubeImportsCache = [];
+      let eventsModalOpen = false;
 
       navLinks.forEach(link => {
         link.addEventListener('click', event => {
@@ -872,6 +1429,131 @@
         });
       });
 
+      const namespaceSearchInput = document.getElementById('namespace-search');
+      const nodeSearchInput = document.getElementById('node-search');
+      const deploymentSearchInput = document.getElementById('deployment-search');
+      const serviceSearchInput = document.getElementById('service-search');
+      const podSearchInput = document.getElementById('pod-search');
+      const namespaceCountHint = document.getElementById('namespace-count');
+      const nodeCountHint = document.getElementById('node-count');
+      const deploymentCountHint = document.getElementById('deployment-count');
+      const serviceCountHint = document.getElementById('service-count');
+      const podCountHint = document.getElementById('pod-count');
+      const kubeImportInput = document.getElementById('kubeconfig-input');
+      const kubeImportTrigger = document.getElementById('kubeconfig-trigger');
+      const kubeImportList = document.getElementById('import-list');
+      const kubeImportFeedback = document.getElementById('kubeconfig-feedback');
+      const logNamespaceSelect = document.getElementById('log-namespace-filter');
+      const logPodSelect = document.getElementById('log-pod-filter');
+      const logLevelSelect = document.getElementById('log-level-filter');
+      const logAutoscrollToggle = document.getElementById('log-autoscroll');
+      const logTableBody = document.querySelector('#log-table tbody');
+      const eventsLaunchButton = document.getElementById('events-launch-button');
+      const eventsModal = document.getElementById('events-modal');
+      const eventsModalTitle = document.getElementById('events-modal-title');
+      const eventsModalList = document.getElementById('events-modal-list');
+      const eventsModalClose = document.getElementById('events-modal-close');
+
+      if (logNamespaceSelect) {
+        logNamespaceSelect.addEventListener('change', () => {
+          fetchLogs();
+        });
+      }
+
+      if (logPodSelect) {
+        logPodSelect.addEventListener('change', () => {
+          fetchLogs();
+        });
+      }
+
+      if (logLevelSelect) {
+        logLevelSelect.addEventListener('change', () => {
+          fetchLogs();
+        });
+      }
+
+      if (logAutoscrollToggle) {
+        logAutoscrollToggle.addEventListener('change', event => {
+          logAutoScroll = Boolean(event.target.checked);
+        });
+      }
+
+      if (namespaceSearchInput) {
+        const refresh = () => refreshNamespaceTable({ announce: true });
+        namespaceSearchInput.addEventListener('input', refresh);
+        namespaceSearchInput.addEventListener('search', refresh);
+      }
+
+      if (nodeSearchInput) {
+        const refresh = () => refreshNodesTable({ announce: true });
+        nodeSearchInput.addEventListener('input', refresh);
+        nodeSearchInput.addEventListener('search', refresh);
+      }
+
+      if (deploymentSearchInput) {
+        const refresh = () => refreshDeploymentsTable({ announce: true });
+        deploymentSearchInput.addEventListener('input', refresh);
+        deploymentSearchInput.addEventListener('search', refresh);
+      }
+
+      if (serviceSearchInput) {
+        const refresh = () => refreshServicesTable({ announce: true });
+        serviceSearchInput.addEventListener('input', refresh);
+        serviceSearchInput.addEventListener('search', refresh);
+      }
+
+      if (podSearchInput) {
+        const refresh = () => refreshPodsTable({ announce: true });
+        podSearchInput.addEventListener('input', refresh);
+        podSearchInput.addEventListener('search', refresh);
+      }
+
+      if (kubeImportTrigger && kubeImportInput) {
+        kubeImportTrigger.addEventListener('click', () => {
+          kubeImportInput.value = '';
+          kubeImportInput.click();
+        });
+
+        kubeImportInput.addEventListener('change', () => {
+          const [file] = kubeImportInput.files || [];
+          if (!file) {
+            return;
+          }
+          handleKubeconfigUpload(file);
+        });
+      }
+
+      if (eventsLaunchButton) {
+        eventsLaunchButton.addEventListener('click', async () => {
+          try {
+            showEventsFeedback('正在加载事件...', true);
+            await loadEvents({ silent: true });
+            showEventsFeedback('事件加载完成', true);
+            openEventsModal('集群事件流', eventsCache);
+          } catch {
+            // loadEvents 已处理提示
+          }
+        });
+      }
+
+      if (eventsModalClose) {
+        eventsModalClose.addEventListener('click', closeEventsModal);
+      }
+
+      if (eventsModal) {
+        eventsModal.addEventListener('click', event => {
+          if (event.target === eventsModal) {
+            closeEventsModal();
+          }
+        });
+      }
+
+      document.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && eventsModalOpen) {
+          closeEventsModal();
+        }
+      });
+
       function escapeHtml(str) {
         return String(str)
           .replace(/&/g, '&amp;')
@@ -879,6 +1561,243 @@
           .replace(/>/g, '&gt;')
           .replace(/"/g, '&quot;')
           .replace(/'/g, '&#39;');
+      }
+
+      function formatRelativeTime(timestamp) {
+        if (!timestamp) {
+          return '-';
+        }
+        const date = new Date(timestamp);
+        if (Number.isNaN(date.getTime())) {
+          return '-';
+        }
+        const diff = Date.now() - date.getTime();
+        if (diff <= 0) {
+          return '刚刚';
+        }
+        const minutes = Math.floor(diff / 60000);
+        if (minutes < 1) {
+          return '刚刚';
+        }
+        if (minutes < 60) {
+          return `${minutes} 分钟前`;
+        }
+        const hours = Math.floor(minutes / 60);
+        if (hours < 24) {
+          return `${hours} 小时前`;
+        }
+        const days = Math.floor(hours / 24);
+        return `${days} 天前`;
+      }
+
+      function getSearchTerm(input) {
+        if (!input || typeof input.value !== 'string') {
+          return '';
+        }
+        return input.value.trim().toLowerCase();
+      }
+
+      function matchesTerm(values, term) {
+        if (!term) {
+          return true;
+        }
+        for (const value of values) {
+          if (value == null) {
+            continue;
+          }
+          if (Array.isArray(value)) {
+            if (matchesTerm(value, term)) {
+              return true;
+            }
+            continue;
+          }
+          const normalized = String(value).toLowerCase();
+          if (normalized.includes(term)) {
+            return true;
+          }
+        }
+        return false;
+      }
+
+      function updateCountHint(element, filtered, total, term) {
+        if (!element) {
+          return;
+        }
+        const base = element.dataset.default || '';
+        if (!total) {
+          element.textContent = base || '暂无数据';
+          return;
+        }
+        if (!term) {
+          element.textContent = base ? `${base}（共 ${total} 条）` : `共 ${total} 条`;
+        } else {
+          element.textContent = `筛选结果：${filtered}/${total} 条`;
+        }
+      }
+
+      function applyNamespaceFilter(list) {
+        const term = getSearchTerm(namespaceSearchInput);
+        if (!term) {
+          return list;
+        }
+        return list.filter(ns => {
+          const labels = ns.labels ? Object.entries(ns.labels).map(([k, v]) => `${k}=${v}`) : [];
+          return matchesTerm([
+            ns.name,
+            ns.status,
+            ns.age,
+            ns.createdAt,
+            labels.join(' ')
+          ], term);
+        });
+      }
+
+      function applyNodeFilter(list) {
+        const term = getSearchTerm(nodeSearchInput);
+        if (!term) {
+          return list;
+        }
+        return list.filter(node => {
+          const roles = (node.roles || []).join(' ');
+          const cpu = `${node.cpu.used}/${node.cpu.capacity}`;
+          const mem = `${node.memory.used}/${node.memory.capacity}`;
+          const pods = `${node.pods.running + node.pods.pending}/${node.pods.capacity}`;
+          return matchesTerm([
+            node.name,
+            node.status,
+            roles,
+            cpu,
+            mem,
+            pods
+          ], term);
+        });
+      }
+
+      function applyDeploymentFilter(list) {
+        const term = getSearchTerm(deploymentSearchInput);
+        if (!term) {
+          return list;
+        }
+        return list.filter(dep => {
+          const images = (dep.images || []).join(' ');
+          const ready = `${dep.readyReplicas}/${dep.desiredReplicas}`;
+          return matchesTerm([
+            dep.name,
+            dep.namespace,
+            dep.status,
+            dep.strategy,
+            dep.age,
+            ready,
+            images
+          ], term);
+        });
+      }
+
+      function applyServiceFilter(list) {
+        const term = getSearchTerm(serviceSearchInput);
+        if (!term) {
+          return list;
+        }
+        return list.filter(service => {
+          const ports = (service.ports || [])
+            .map(port => `${port.name || ''} ${port.port}/${port.protocol || ''} ${port.nodePort || ''}`)
+            .join(' ');
+          const externalIPs = (service.externalIPs || []).join(' ');
+          return matchesTerm([
+            service.name,
+            service.namespace,
+            service.type,
+            service.status,
+            service.clusterIP,
+            externalIPs,
+            ports
+          ], term);
+        });
+      }
+
+      function applyPodFilter(list) {
+        const term = getSearchTerm(podSearchInput);
+        if (!term) {
+          return list;
+        }
+        return list.filter(pod => {
+          const images = (pod.images || []).join(' ');
+          return matchesTerm([
+            pod.name,
+            pod.namespace,
+            pod.status,
+            pod.node,
+            pod.readyContainers,
+            pod.age,
+            images
+          ], term);
+        });
+      }
+
+      function refreshNamespaceTable({ announce = false } = {}) {
+        const term = getSearchTerm(namespaceSearchInput);
+        const filtered = applyNamespaceFilter(namespacesCache);
+        renderNamespaces(filtered);
+        updateCountHint(namespaceCountHint, filtered.length, namespacesCache.length, term);
+        if (announce) {
+          const total = namespacesCache.length;
+          const message = term
+            ? `筛选命名空间：${filtered.length}/${total}`
+            : `共 ${total} 条命名空间`;
+          showNamespaceFeedback(message, true);
+        }
+      }
+
+      function refreshNodesTable({ announce = false } = {}) {
+        const term = getSearchTerm(nodeSearchInput);
+        const filtered = applyNodeFilter(nodesCache);
+        renderNodesTable(filtered);
+        highlightNodeSelection();
+        updateCountHint(nodeCountHint, filtered.length, nodesCache.length, term);
+        if (announce) {
+          const total = nodesCache.length;
+          const message = term ? `筛选节点：${filtered.length}/${total}` : `共 ${total} 台节点`;
+          showNodesFeedback(message, true);
+        }
+      }
+
+      function refreshDeploymentsTable({ announce = false } = {}) {
+        const term = getSearchTerm(deploymentSearchInput);
+        const filtered = applyDeploymentFilter(deploymentsCache);
+        renderDeploymentsTable(filtered);
+        highlightDeploymentSelection();
+        updateCountHint(deploymentCountHint, filtered.length, deploymentsCache.length, term);
+        if (announce) {
+          const total = deploymentsCache.length;
+          const message = term ? `筛选 Deployment：${filtered.length}/${total}` : `共 ${total} 个 Deployment`;
+          showDeploymentsFeedback(message, true);
+        }
+      }
+
+      function refreshServicesTable({ announce = false } = {}) {
+        const term = getSearchTerm(serviceSearchInput);
+        const filtered = applyServiceFilter(servicesCache);
+        renderServicesTable(filtered);
+        highlightServiceSelection();
+        updateCountHint(serviceCountHint, filtered.length, servicesCache.length, term);
+        if (announce) {
+          const total = servicesCache.length;
+          const message = term ? `筛选 Service：${filtered.length}/${total}` : `共 ${total} 个 Service`;
+          showServicesFeedback(message, true);
+        }
+      }
+
+      function refreshPodsTable({ announce = false } = {}) {
+        const term = getSearchTerm(podSearchInput);
+        const filtered = applyPodFilter(podsCache);
+        renderPodsTable(filtered);
+        highlightPodSelection();
+        updateCountHint(podCountHint, filtered.length, podsCache.length, term);
+        if (announce) {
+          const total = podsCache.length;
+          const message = term ? `筛选 Pod：${filtered.length}/${total}` : `共 ${total} 个 Pod`;
+          showPodsFeedback(message, true);
+        }
       }
 
       function switchView(view) {
@@ -899,7 +1818,77 @@
         document.getElementById('view-subtitle').textContent = meta.subtitle;
 
         activeView = view;
-        handleManualRefresh();
+        handleManualRefresh({ silent: true });
+      }
+
+      function updateThemeToggleLabel(theme) {
+        if (!themeToggleButton) {
+          return;
+        }
+        const isDark = theme === 'dark';
+        const icon = isDark ? '🌙' : '☀️';
+        const currentLabel = isDark ? '星夜模式' : '日光模式';
+        const actionLabel = isDark ? '切换为日光模式' : '切换为星夜模式';
+        if (themeIconSpan) {
+          themeIconSpan.textContent = icon;
+        }
+        if (themeLabelSpan) {
+          themeLabelSpan.textContent = `当前：${currentLabel}`;
+        }
+        themeToggleButton.setAttribute('aria-label', actionLabel);
+        themeToggleButton.setAttribute('title', actionLabel);
+      }
+
+      function applyTheme(theme, { persist = true } = {}) {
+        const nextTheme = theme === 'dark' ? 'dark' : 'light';
+        document.documentElement.setAttribute('data-theme', nextTheme);
+        if (persist) {
+          try {
+            window.localStorage.setItem(themeStorageKey, nextTheme);
+          } catch (err) {
+            /* 忽略写入失败 */
+          }
+        }
+        updateThemeToggleLabel(nextTheme);
+      }
+
+      function detectInitialTheme() {
+        const attr = document.documentElement.getAttribute('data-theme');
+        if (attr === 'dark' || attr === 'light') {
+          return attr;
+        }
+        return 'light';
+      }
+
+      updateThemeToggleLabel(detectInitialTheme());
+
+      if (themeToggleButton) {
+        themeToggleButton.addEventListener('click', () => {
+          const current = document.documentElement.getAttribute('data-theme');
+          const next = current === 'dark' ? 'light' : 'dark';
+          applyTheme(next, { persist: true });
+        });
+      }
+
+      if (window.matchMedia) {
+        const media = window.matchMedia('(prefers-color-scheme: dark)');
+        const handleChange = event => {
+          let stored = null;
+          try {
+            stored = window.localStorage.getItem(themeStorageKey);
+          } catch (err) {
+            stored = null;
+          }
+          if (stored === 'light' || stored === 'dark') {
+            return;
+          }
+          applyTheme(event.matches ? 'dark' : 'light', { persist: false });
+        };
+        if (media.addEventListener) {
+          media.addEventListener('change', handleChange);
+        } else if (media.addListener) {
+          media.addListener(handleChange);
+        }
       }
 
       async function fetchOverview() {
@@ -1002,7 +1991,8 @@
             throw new Error(`请求失败: ${res.status}`);
           }
           const data = await res.json();
-          renderNamespaces(data);
+          namespacesCache = Array.isArray(data) ? data : [];
+          refreshNamespaceTable();
           showNamespaceFeedback('命名空间列表已刷新', true);
         } catch (err) {
           showNamespaceFeedback(`命名空间列表获取失败：${err.message}`, false);
@@ -1022,14 +2012,19 @@
 
         namespaces.forEach(ns => {
           const row = document.createElement('tr');
-          const labels = ns.labels ? Object.entries(ns.labels).map(([k, v]) => `${k}=${v}`).join('<br />') : '-';
+          const labels = ns.labels
+            ? Object.entries(ns.labels)
+                .map(([k, v]) => `${escapeHtml(k)}=${escapeHtml(v)}`)
+                .join('<br />')
+            : '-';
+          const createdAt = ns.createdAt ? escapeHtml(new Date(ns.createdAt).toLocaleString()) : '-';
           row.innerHTML = `
-            <td>${ns.name}</td>
-            <td>${ns.status}</td>
-            <td>${ns.age}</td>
-            <td>${new Date(ns.createdAt).toLocaleString()}</td>
+            <td>${escapeHtml(ns.name)}</td>
+            <td>${escapeHtml(ns.status)}</td>
+            <td>${escapeHtml(ns.age)}</td>
+            <td>${createdAt}</td>
             <td>${labels}</td>
-            <td><button type="button" data-action="delete" data-name="${ns.name}">删除</button></td>
+            <td><button type="button" data-action="delete" data-name="${escapeHtml(ns.name)}">删除</button></td>
           `;
           tbody.appendChild(row);
         });
@@ -1097,6 +2092,89 @@
         box.style.display = 'block';
       }
 
+      async function handleKubeconfigUpload(file) {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+          const res = await fetch('/api/cluster/import', {
+            method: 'POST',
+            body: formData
+          });
+          if (!res.ok) {
+            const text = await res.text();
+            throw new Error(text || `请求失败: ${res.status}`);
+          }
+          const summary = await res.json();
+          showImportFeedback(`导入成功：${summary.name || file.name}`, true);
+          await fetchClusterImports({ silent: true });
+        } catch (err) {
+          showImportFeedback(`导入失败：${err.message}`, false);
+        } finally {
+          if (kubeImportInput) {
+            kubeImportInput.value = '';
+          }
+        }
+      }
+
+      function showImportFeedback(message, success) {
+        if (!kubeImportFeedback) {
+          return;
+        }
+        kubeImportFeedback.textContent = message;
+        kubeImportFeedback.classList.remove('success', 'error');
+        kubeImportFeedback.classList.add(success ? 'success' : 'error');
+        kubeImportFeedback.style.display = 'block';
+      }
+
+      async function fetchClusterImports({ silent = false } = {}) {
+        if (!kubeImportList) {
+          return;
+        }
+        try {
+          const res = await fetch('/api/cluster/imports', { cache: 'no-store' });
+          if (!res.ok) {
+            throw new Error(`请求失败: ${res.status}`);
+          }
+          const data = await res.json();
+          kubeImportsCache = Array.isArray(data) ? data : [];
+          renderClusterImports(kubeImportsCache);
+          if (!silent) {
+            showImportFeedback(`已同步 ${kubeImportsCache.length} 条导入记录`, true);
+          }
+        } catch (err) {
+          showImportFeedback(`获取导入记录失败：${err.message}`, false);
+        }
+      }
+
+      function renderClusterImports(imports) {
+        if (!kubeImportList) {
+          return;
+        }
+
+        kubeImportList.innerHTML = '';
+
+        if (!imports || imports.length === 0) {
+          const li = document.createElement('li');
+          li.innerHTML = '<strong>尚未导入集群</strong><small>上传 kubeconfig 文件后，这里会展示解析结果</small>';
+          kubeImportList.appendChild(li);
+          return;
+        }
+
+        imports.forEach(item => {
+          const li = document.createElement('li');
+          const clusterCount = (item.clusters || []).length;
+          const contextCount = (item.contexts || []).length;
+          const importedAt = item.importedAt ? new Date(item.importedAt).toLocaleString() : '未知时间';
+          li.innerHTML = `
+            <strong>${escapeHtml(item.name || '未命名集群')}</strong>
+            <small>集群 ${clusterCount} · 上下文 ${contextCount} · 当前 ${escapeHtml(item.currentContext || '未指定')}</small>
+            <small>导入时间：${escapeHtml(importedAt)}</small>
+          `;
+          kubeImportList.appendChild(li);
+        });
+      }
+
       async function fetchNodes({ retainSelection = false } = {}) {
         try {
           const res = await fetch('/api/nodes', { cache: 'no-store' });
@@ -1105,11 +2183,12 @@
           }
           const data = await res.json();
           nodesCache = Array.isArray(data) ? data : [];
-          renderNodesTable(nodesCache);
 
           if (!retainSelection || !activeNode || !nodesCache.find(n => n.name === activeNode)) {
             activeNode = nodesCache.length ? nodesCache[0].name : null;
           }
+
+          refreshNodesTable();
 
           if (activeNode) {
             await fetchNodeDetail(activeNode, { silent: true });
@@ -1138,13 +2217,17 @@
           const row = document.createElement('tr');
           row.dataset.name = node.name;
           row.className = node.name === activeNode ? 'active' : '';
+          const roles = (node.roles || []).join(', ') || '未知';
+          const cpuUsage = `${node.cpu.used}/${node.cpu.capacity} ${node.cpu.unit} (${node.cpu.percentage}%)`;
+          const memoryUsage = `${node.memory.used}/${node.memory.capacity} ${node.memory.unit} (${node.memory.percentage}%)`;
+          const podsUsage = `${node.pods.running + node.pods.pending}/${node.pods.capacity}`;
           row.innerHTML = `
-            <td>${node.name}</td>
-            <td>${node.status}</td>
-            <td>${(node.roles || []).join(', ') || '未知'}</td>
-            <td>${node.cpu.used}/${node.cpu.capacity} ${node.cpu.unit} (${node.cpu.percentage}%)</td>
-            <td>${node.memory.used}/${node.memory.capacity} ${node.memory.unit} (${node.memory.percentage}%)</td>
-            <td>${node.pods.running + node.pods.pending}/${node.pods.capacity}</td>
+            <td>${escapeHtml(node.name)}</td>
+            <td>${escapeHtml(node.status)}</td>
+            <td>${escapeHtml(roles)}</td>
+            <td>${escapeHtml(cpuUsage)}</td>
+            <td>${escapeHtml(memoryUsage)}</td>
+            <td>${escapeHtml(podsUsage)}</td>
           `;
           row.addEventListener('click', () => {
             activeNode = node.name;
@@ -1295,13 +2378,12 @@
           }
           const data = await res.json();
           deploymentsCache = Array.isArray(data) ? data : [];
-          renderDeploymentsTable(deploymentsCache);
 
           if (!retainSelection || !activeDeployment || !deploymentsCache.find(d => d.name === activeDeployment)) {
             activeDeployment = deploymentsCache.length ? deploymentsCache[0].name : null;
           }
 
-          highlightDeploymentSelection();
+          refreshDeploymentsTable();
 
           if (activeDeployment) {
             await fetchDeploymentDetail(activeDeployment, { silent: true });
@@ -1524,6 +2606,476 @@
         box.style.display = 'block';
       }
 
+      async function fetchServices({ retainSelection = false } = {}) {
+        try {
+          const res = await fetch('/api/services', { cache: 'no-store' });
+          if (!res.ok) {
+            throw new Error(`请求失败: ${res.status}`);
+          }
+          const data = await res.json();
+          servicesCache = Array.isArray(data) ? data : [];
+
+          if (!retainSelection || !activeService || !servicesCache.find(svc => svc.name === activeService)) {
+            activeService = servicesCache.length ? servicesCache[0].name : null;
+          }
+
+          refreshServicesTable();
+
+          if (activeService) {
+            await fetchServiceDetail(activeService, { silent: true });
+          } else {
+            renderServiceDetail(null);
+          }
+
+          showServicesFeedback('服务列表已刷新', true);
+        } catch (err) {
+          showServicesFeedback(`服务列表获取失败：${err.message}`, false);
+        }
+      }
+
+      function renderServicesTable(services) {
+        const tbody = document.querySelector('#service-table tbody');
+        if (!tbody) {
+          return;
+        }
+        tbody.innerHTML = '';
+
+        if (!services || services.length === 0) {
+          const row = document.createElement('tr');
+          row.innerHTML = '<td colspan="8">暂无 Service 记录</td>';
+          tbody.appendChild(row);
+          return;
+        }
+
+        services.forEach(service => {
+          const row = document.createElement('tr');
+          row.dataset.name = service.name;
+          row.className = service.name === activeService ? 'active' : '';
+
+          const ports = (service.ports || [])
+            .map(port => {
+              const label = port.name ? `${escapeHtml(port.name)} ` : '';
+              const mapping = `${escapeHtml(String(port.port))}→${escapeHtml(String(port.targetPort))}/${escapeHtml(port.protocol || '-')}`;
+              const node = port.nodePort != null ? ` · NodePort ${escapeHtml(String(port.nodePort))}` : '';
+              return `${label}${mapping}${node}`;
+            })
+            .join('<br />') || '-';
+
+          const externalIPs = (service.externalIPs || [])
+            .map(ip => escapeHtml(ip))
+            .join('<br />') || '-';
+
+          row.innerHTML = `
+            <td>${escapeHtml(service.name)}</td>
+            <td>${escapeHtml(service.namespace)}</td>
+            <td>${escapeHtml(service.type || '-')}</td>
+            <td>${escapeHtml(service.clusterIP || '-')}</td>
+            <td>${externalIPs}</td>
+            <td>${ports}</td>
+            <td>${escapeHtml(service.age || '-')}</td>
+            <td>${escapeHtml(service.status || '-')}</td>
+          `;
+
+          row.addEventListener('click', () => {
+            activeService = service.name;
+            highlightServiceSelection();
+            fetchServiceDetail(service.name);
+          });
+
+          tbody.appendChild(row);
+        });
+      }
+
+      function highlightServiceSelection() {
+        document.querySelectorAll('#service-table tbody tr').forEach(row => {
+          row.classList.toggle('active', row.dataset.name === activeService);
+        });
+      }
+
+      async function fetchServiceDetail(name, { silent = false } = {}) {
+        if (!name) {
+          renderServiceDetail(null);
+          return;
+        }
+
+        try {
+          const res = await fetch(`/api/services/${encodeURIComponent(name)}`, { cache: 'no-store' });
+          if (!res.ok) {
+            if (res.status === 404) {
+              throw new Error('Service 不存在');
+            }
+            throw new Error(`请求失败: ${res.status}`);
+          }
+          const detail = await res.json();
+          renderServiceDetail(detail);
+          if (!silent) {
+            showServicesFeedback(`Service ${name} 详情已更新`, true);
+          }
+        } catch (err) {
+          showServicesFeedback(`获取 Service ${name} 详情失败：${err.message}`, false);
+        }
+      }
+
+      function renderServiceDetail(detail) {
+        const container = document.getElementById('service-detail-content');
+        if (!container) {
+          return;
+        }
+
+        if (!detail) {
+          container.innerHTML = '<p class="subtitle">暂未选择 Service</p>';
+          return;
+        }
+
+        const status = (detail.status || '').toLowerCase();
+        let statusClass = 'unknown';
+        if (status === 'active' || status === 'ready') {
+          statusClass = 'ready';
+        } else if (status === 'pending' || status === 'degraded') {
+          statusClass = 'notready';
+        }
+
+        const externalIPs = (detail.externalIPs || []).join('，') || '未分配';
+        const createdAt = detail.createdAt ? new Date(detail.createdAt).toLocaleString() : '未知';
+
+        const ports = detail.ports && detail.ports.length
+          ? detail.ports
+              .map(port => {
+                const name = port.name ? `${escapeHtml(port.name)}` : '未命名端口';
+                const node = port.nodePort != null ? ` · NodePort ${escapeHtml(String(port.nodePort))}` : '';
+                return `
+                  <li>
+                    <strong>${name}</strong>
+                    <small>${escapeHtml(port.protocol || '-')}: ${escapeHtml(String(port.port))} → ${escapeHtml(String(port.targetPort))}${node}</small>
+                  </li>
+                `;
+              })
+              .join('')
+          : '<li>暂无端口信息</li>';
+
+        const selectorChips = detail.selector && Object.keys(detail.selector || {}).length
+          ? Object.entries(detail.selector)
+              .map(([k, v]) => `<span class="chip">${escapeHtml(k)}=${escapeHtml(v)}</span>`)
+              .join('')
+          : '<span class="chip">未设置</span>';
+
+        const endpoints = detail.endpoints && detail.endpoints.length
+          ? detail.endpoints.map(ep => `<li>${escapeHtml(ep)}</li>`).join('')
+          : '<li>暂无 Endpoint</li>';
+
+        const related = detail.relatedPods && detail.relatedPods.length
+          ? detail.relatedPods
+              .map(pod => {
+                const node = pod.node ? ` · 节点 ${escapeHtml(pod.node)}` : '';
+                return `
+                  <li>
+                    <strong>${escapeHtml(pod.name)}</strong>
+                    <small>${escapeHtml(pod.namespace)} · ${escapeHtml(pod.status || '未知')}${node}</small>
+                  </li>
+                `;
+              })
+              .join('')
+          : '<li>暂无关联 Pod</li>';
+
+        container.innerHTML = `
+          <div class="detail-header">
+            <h3>${escapeHtml(detail.name)}</h3>
+            <span class="badge ${statusClass}">${escapeHtml(detail.status || '未知')}</span>
+          </div>
+          <div class="detail-meta">
+            <div class="item">
+              <strong>命名空间</strong>
+              <span>${escapeHtml(detail.namespace)}</span>
+            </div>
+            <div class="item">
+              <strong>服务类型</strong>
+              <span>${escapeHtml(detail.type || '-')}</span>
+            </div>
+            <div class="item">
+              <strong>Cluster IP</strong>
+              <span>${escapeHtml(detail.clusterIP || '-')}</span>
+            </div>
+            <div class="item">
+              <strong>外部 IP</strong>
+              <span>${escapeHtml(externalIPs)}</span>
+            </div>
+            <div class="item">
+              <strong>存在时间</strong>
+              <span>${escapeHtml(detail.age || '-')}</span>
+            </div>
+            <div class="item">
+              <strong>创建时间</strong>
+              <span>${escapeHtml(createdAt)}</span>
+            </div>
+          </div>
+          <div class="detail-section">
+            <h3>端口映射</h3>
+            <ul>${ports}</ul>
+          </div>
+          <div class="detail-section">
+            <h3>Selector</h3>
+            <div class="chip-group">${selectorChips}</div>
+          </div>
+          <div class="detail-section">
+            <h3>Endpoints</h3>
+            <ul>${endpoints}</ul>
+          </div>
+          <div class="detail-section">
+            <h3>关联 Pod</h3>
+            <ul>${related}</ul>
+          </div>
+          <div class="detail-section">
+            <h3>说明</h3>
+            <p class="subtitle">${escapeHtml(detail.description || '暂无描述')}</p>
+          </div>
+        `;
+      }
+
+      function showServicesFeedback(message, success) {
+        const box = document.getElementById('services-feedback');
+        if (!box) {
+          return;
+        }
+        box.textContent = message;
+        box.classList.remove('success', 'error');
+        box.classList.add(success ? 'success' : 'error');
+        box.style.display = 'block';
+      }
+
+      async function fetchLogMeta() {
+        try {
+          const res = await fetch('/api/logs/meta', { cache: 'no-store' });
+          if (!res.ok) {
+            throw new Error(`请求失败: ${res.status}`);
+          }
+          const data = await res.json();
+          const namespaces = Array.isArray(data.namespaces) ? data.namespaces : [];
+          const pods = Array.isArray(data.pods) ? data.pods : [];
+          const levels = Array.isArray(data.levels) ? data.levels : [];
+          logMetaCache = { namespaces, pods, levels };
+          renderLogFilters(logMetaCache);
+        } catch (err) {
+          showLogsFeedback(`获取日志筛选信息失败：${err.message}`, false);
+        }
+      }
+
+      function updateSelectOptions(select, options, placeholder) {
+        if (!select) {
+          return;
+        }
+        const current = select.value;
+        select.innerHTML = '';
+        const defaultOption = document.createElement('option');
+        defaultOption.value = '';
+        defaultOption.textContent = placeholder;
+        select.appendChild(defaultOption);
+
+        (options || []).forEach(option => {
+          const opt = document.createElement('option');
+          opt.value = option;
+          opt.textContent = option;
+          select.appendChild(opt);
+        });
+
+        if (current && options && options.includes(current)) {
+          select.value = current;
+        }
+      }
+
+      function renderLogFilters(meta) {
+        updateSelectOptions(logNamespaceSelect, meta.namespaces || [], '全部命名空间');
+        updateSelectOptions(logPodSelect, meta.pods || [], '全部 Pod');
+
+        if (logLevelSelect) {
+          const levelOptions = (meta.levels || []).map(level => String(level));
+          updateSelectOptions(logLevelSelect, levelOptions, '全部级别');
+        }
+      }
+
+      async function fetchLogs({ silent = false } = {}) {
+        if (!logTableBody) {
+          return;
+        }
+
+        const params = new URLSearchParams();
+        if (logNamespaceSelect && logNamespaceSelect.value) {
+          params.set('namespace', logNamespaceSelect.value);
+        }
+        if (logPodSelect && logPodSelect.value) {
+          params.set('pod', logPodSelect.value);
+        }
+        if (logLevelSelect && logLevelSelect.value) {
+          params.set('level', logLevelSelect.value);
+        }
+        params.set('limit', '100');
+
+        const url = `/api/logs/stream${params.toString() ? `?${params.toString()}` : ''}`;
+
+        try {
+          const res = await fetch(url, { cache: 'no-store' });
+          if (!res.ok) {
+            throw new Error(`请求失败: ${res.status}`);
+          }
+          const data = await res.json();
+          logsCache = Array.isArray(data) ? data : [];
+          renderLogTable(logsCache);
+          if (!silent) {
+            showLogsFeedback('日志流已刷新', true);
+          }
+        } catch (err) {
+          showLogsFeedback(`获取日志失败：${err.message}`, false);
+        }
+      }
+
+      function renderLogTable(entries) {
+        if (!logTableBody) {
+          return;
+        }
+
+        logTableBody.innerHTML = '';
+
+        if (!entries || entries.length === 0) {
+          const row = document.createElement('tr');
+          row.innerHTML = '<td colspan="5">暂无日志记录</td>';
+          logTableBody.appendChild(row);
+          return;
+        }
+
+        entries.forEach(entry => {
+          const levelName = String(entry.level || '').toLowerCase();
+          let levelClass = 'log-level-info';
+          if (levelName === 'warn') {
+            levelClass = 'log-level-warn';
+          } else if (levelName === 'error') {
+            levelClass = 'log-level-error';
+          }
+
+          const row = document.createElement('tr');
+          const relative = formatRelativeTime(entry.timestamp);
+          const absolute = entry.timestamp ? new Date(entry.timestamp).toLocaleString() : '-';
+          row.innerHTML = `
+            <td><span title="${escapeHtml(absolute)}">${escapeHtml(relative)}</span></td>
+            <td>${escapeHtml(entry.namespace || '-')}</td>
+            <td>${escapeHtml(entry.pod || '-')}</td>
+            <td><span class="log-level-badge ${levelClass}">${escapeHtml(String(entry.level || '-'))}</span></td>
+            <td>${escapeHtml(entry.message || '')}</td>
+          `;
+          logTableBody.appendChild(row);
+        });
+
+        if (logAutoScroll) {
+          const wrapper = document.querySelector('.log-table-wrapper');
+          if (wrapper) {
+            wrapper.scrollTop = wrapper.scrollHeight;
+          }
+        }
+      }
+
+      function showLogsFeedback(message, success) {
+        const box = document.getElementById('logs-feedback');
+        if (!box) {
+          return;
+        }
+        box.textContent = message;
+        box.classList.remove('success', 'error');
+        box.classList.add(success ? 'success' : 'error');
+        box.style.display = 'block';
+      }
+
+      async function loadEvents({ silent = false } = {}) {
+        try {
+          const res = await fetch('/api/events', { cache: 'no-store' });
+          if (!res.ok) {
+            throw new Error(`请求失败: ${res.status}`);
+          }
+          const data = await res.json();
+          eventsCache = Array.isArray(data) ? data : [];
+          if (eventsModalOpen) {
+            renderEventsList(eventsCache, eventsModalList);
+          }
+          if (!silent) {
+            showEventsFeedback('事件流已刷新', true);
+          }
+          return eventsCache;
+        } catch (err) {
+          showEventsFeedback(`获取事件失败：${err.message}`, false);
+          throw err;
+        }
+      }
+
+      function renderEventsList(events, container) {
+        if (!container) {
+          return;
+        }
+
+        container.innerHTML = '';
+
+        if (!events || events.length === 0) {
+          const item = document.createElement('li');
+          item.innerHTML = '<p class="subtitle">暂无事件数据</p>';
+          container.appendChild(item);
+          return;
+        }
+
+        events.forEach(event => {
+          const type = String(event.type || '').toLowerCase();
+          const item = document.createElement('li');
+          item.className = type === 'warning' ? 'warning' : 'normal';
+
+          const when = formatRelativeTime(event.timestamp);
+          const absolute = event.timestamp ? new Date(event.timestamp).toLocaleString() : '-';
+          const countLabel = event.count ? ` · 次数 ${escapeHtml(String(event.count))}` : '';
+
+          item.innerHTML = `
+            <div class="detail-header">
+              <h3>${escapeHtml(event.reason || '事件')}</h3>
+              <span class="badge ${type === 'warning' ? 'notready' : 'ready'}">${escapeHtml(event.type || 'Normal')}</span>
+            </div>
+            <div class="event-meta">
+              <span title="${escapeHtml(absolute)}">${escapeHtml(when)}</span>
+              <span>命名空间 ${escapeHtml(event.namespace || '-')}</span>
+              <span>${escapeHtml(event.kind || '-')}/${escapeHtml(event.name || '-')}${countLabel}</span>
+            </div>
+            <p>${escapeHtml(event.message || '')}</p>
+          `;
+
+          container.appendChild(item);
+        });
+      }
+
+      function showEventsFeedback(message, success) {
+        const box = document.getElementById('events-feedback');
+        if (!box) {
+          return;
+        }
+        box.textContent = message;
+        box.classList.remove('success', 'error');
+        box.classList.add(success ? 'success' : 'error');
+        box.style.display = 'block';
+      }
+
+      function openEventsModal(title, events) {
+        if (!eventsModal || !eventsModalTitle || !eventsModalList) {
+          return;
+        }
+        eventsModalTitle.textContent = title;
+        renderEventsList(events, eventsModalList);
+        eventsModal.classList.add('show');
+        eventsModal.removeAttribute('hidden');
+        document.body.classList.add('modal-open');
+        eventsModalOpen = true;
+      }
+
+      function closeEventsModal() {
+        if (!eventsModal) {
+          return;
+        }
+        eventsModal.classList.remove('show');
+        eventsModal.setAttribute('hidden', '');
+        document.body.classList.remove('modal-open');
+        eventsModalOpen = false;
+      }
+
       async function fetchPods({ retainSelection = false } = {}) {
         try {
           const res = await fetch('/api/pods', { cache: 'no-store' });
@@ -1532,13 +3084,12 @@
           }
           const data = await res.json();
           podsCache = Array.isArray(data) ? data : [];
-          renderPodsTable(podsCache);
 
           if (!retainSelection || !activePod || !podsCache.find(p => p.name === activePod)) {
             activePod = podsCache.length ? podsCache[0].name : null;
           }
 
-          highlightPodSelection();
+          refreshPodsTable();
 
           if (activePod) {
             await fetchPodDetail(activePod, { silent: true });
@@ -1647,21 +3198,6 @@
           ? escapeHtml(detail.logs.join('\n'))
           : '暂无日志输出';
 
-        const events = detail.events && detail.events.length
-          ? detail.events
-              .map(ev => {
-                const ts = ev.timestamp ? new Date(ev.timestamp).toLocaleString() : '未知时间';
-                return `
-                  <li>
-                    <strong>${escapeHtml(ev.type)} · ${escapeHtml(ev.reason)}</strong>
-                    <small>${escapeHtml(ev.message)}</small>
-                    <small>${escapeHtml(ts)}</small>
-                  </li>
-                `;
-              })
-              .join('')
-          : '<li>暂无事件信息</li>';
-
         container.innerHTML = `
           <div class="detail-header">
             <h3>${escapeHtml(detail.name)}</h3>
@@ -1703,9 +3239,29 @@
           </div>
           <div class="detail-section">
             <h3>事件</h3>
-            <ul class="events-list">${events}</ul>
+            <button type="button" class="view-events-button" id="pod-events-button">查看事件</button>
           </div>
         `;
+
+        const eventsButton = container.querySelector('#pod-events-button');
+        if (eventsButton) {
+          const hasEvents = Array.isArray(detail.events) && detail.events.length > 0;
+          eventsButton.disabled = !hasEvents;
+          eventsButton.addEventListener('click', () => {
+            const events = Array.isArray(detail.events) ? detail.events : [];
+            const mapped = events.map(ev => ({
+              type: ev.type,
+              reason: ev.reason,
+              message: ev.message,
+              namespace: detail.namespace,
+              name: detail.name,
+              timestamp: ev.timestamp,
+              kind: 'Pod',
+              count: ev.count || undefined
+            }));
+            openEventsModal(`Pod 事件 · ${detail.name}`, mapped);
+          });
+        }
       }
 
       function showPodsFeedback(message, success) {
@@ -1716,31 +3272,43 @@
         box.style.display = 'block';
       }
 
-      function handleManualRefresh() {
+      function handleManualRefresh({ silent = false } = {}) {
         if (activeView === 'overview') {
           fetchOverview();
+          fetchClusterImports({ silent });
         } else if (activeView === 'namespaces') {
           fetchNamespaces();
         } else if (activeView === 'nodes') {
           fetchNodes({ retainSelection: true });
         } else if (activeView === 'deployments') {
           fetchDeployments({ retainSelection: true });
+        } else if (activeView === 'services') {
+          fetchServices({ retainSelection: true });
         } else if (activeView === 'pods') {
           fetchPods({ retainSelection: true });
+        } else if (activeView === 'logs') {
+          fetchLogs({ silent });
+          if (eventsModalOpen) {
+            loadEvents({ silent: true }).catch(() => {});
+          }
         }
       }
 
-      document.getElementById('manual-refresh').addEventListener('click', handleManualRefresh);
+      document.getElementById('manual-refresh').addEventListener('click', () => handleManualRefresh());
 
       // 初始加载
       fetchOverview();
+      fetchClusterImports({ silent: true });
       fetchNamespaces();
       fetchNodes();
       fetchDeployments();
+      fetchServices();
       fetchPods();
+      fetchLogMeta();
+      fetchLogs({ silent: true });
 
       setInterval(() => {
-        handleManualRefresh();
+        handleManualRefresh({ silent: true });
       }, 15000);
     </script>
   </body>
